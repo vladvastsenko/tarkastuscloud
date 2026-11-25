@@ -42,8 +42,22 @@ data class InspectionReport(
     val footerText: String = "",
     val reportType: String = "inspection",
     val documentTitle: String = "",
-    val checklist: List<ChecklistItem> = emptyList()
+    val checklist: List<ChecklistItem> = emptyList(),
+    val measurements: List<MeasurementItem> = emptyList()
 )
+
+@Serializable
+data class MeasurementItem(
+    val id: String = UUID.randomUUID().toString(),
+    val parameter: String = "",
+    val value: String = "",
+    val unit: String = "",
+    val permittedValue: String = "",
+    val result: String = ""
+) {
+    fun hasContent(): Boolean = listOf(parameter, value, unit, permittedValue, result).any { it.isNotBlank() }
+    fun asTemplate(): MeasurementItem = copy(value = "", result = "")
+}
 
 @Serializable
 data class ChecklistItem(

@@ -80,6 +80,8 @@ import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
 import fi.vladi.tarkastuspoytakirja.model.ChecklistItem
 import fi.vladi.tarkastuspoytakirja.model.ChecklistLabels
+import fi.vladi.tarkastuspoytakirja.model.MeasurementItem
+import fi.vladi.tarkastuspoytakirja.model.MeasurementLabels
 import fi.vladi.tarkastuspoytakirja.model.InspectionReport
 import fi.vladi.tarkastuspoytakirja.model.ReportPhoto
 import fi.vladi.tarkastuspoytakirja.pdf.ReportPdfGenerator
@@ -227,6 +229,7 @@ private fun TarkastusApp() {
                     createdAt = LocalDate.now().toString(),
                     templateName = "",
                     checklist = template.checklist.map { it.copy(result = "") },
+                    measurements = template.measurements.map { it.asTemplate() },
                     observations = if (template.observations.isEmpty()) listOf(InspectionObservation())
                         else template.observations.map { it.copy(photos = emptyList(), status = "", remediationDeadline = "", reinspectionDate = "") }
                 )))
@@ -621,6 +624,9 @@ private fun EditorScreen(
 
         ChecklistEditor(report.checklist, AppLanguage.selected(pdfContext)) { items ->
             onChange(report.copy(checklist = items))
+        }
+        MeasurementEditor(report.measurements, AppLanguage.selected(pdfContext)) { items ->
+            onChange(report.copy(measurements = items))
         }
         SectionTitle(stringResource(R.string.loc_observations_section))
         report.observations.forEachIndexed { index, observation ->
@@ -1129,6 +1135,52 @@ private fun ChecklistEditor(items: List<ChecklistItem>, language: String, onChan
         }
         OutlinedButton(onClick = { onChange(items + ChecklistItem()) }, modifier = Modifier.fillMaxWidth()) {
             Text(ChecklistLabels.text("add", language))
+        }
+    }
+}
+
+@Composable
+private fun MeasurementEditor(items: List<MeasurementItem>, language: String, onChange: (List<MeasurementItem>) -> Unit) {
+    var expanded by remember { mutableStateOf(items.isNotEmpty()) }
+    TextButton(onClick = { expanded = !expanded }) {
+        Text(MeasurementLabels.text("heading", language) + " (" + items.size + ")" + if (expanded) " ▴" else " ▾")
+    }
+    if (expanded) {
+        items.forEach { item ->
+            androidx.compose.runtime.key(item.id) {
+                fun update(updated: MeasurementItem) {
+                    onChange(items.map { if (it.id == updated.id) updated else it })
+                }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Field(MeasurementLabels.text("parameter", language), item.parameter) { update(item.copy(parameter = it)) }
+                        Field(MeasurementLabels.text("value", language), item.value) { update(item.copy(value = it)) }
+                        Field(MeasurementLabels.text("unit", language), item.unit) { update(item.copy(unit = it)) }
+                        Field(MeasurementLabels.text("limit", language), item.permittedValue) { update(item.copy(permittedValue = it)) }
+                        var menu by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text(ChecklistLabels.text("result", language) + ": " +
+                                    ChecklistLabels.text(item.result.ifBlank { "none" }, language) + " ▾")
+                            }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                ChecklistLabels.results.forEach { result ->
+                                    DropdownMenuItem(text = { Text(ChecklistLabels.text(result.ifBlank { "none" }, language)) }, onClick = {
+                                        menu = false
+                                        update(item.copy(result = result))
+                                    })
+                                }
+                            }
+                        }
+                        TextButton(onClick = { onChange(items.filterNot { it.id == item.id }) }) {
+                            Text(stringResource(R.string.ui_delete))
+                        }
+                    }
+                }
+            }
+        }
+        OutlinedButton(onClick = { onChange(items + MeasurementItem()) }, modifier = Modifier.fillMaxWidth()) {
+            Text(MeasurementLabels.text("add", language))
         }
     }
 }

@@ -1,6 +1,7 @@
 package fi.vladi.tarkastuspoytakirja.pdf
 
 import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
+import fi.vladi.tarkastuspoytakirja.model.MeasurementLabels
 import fi.vladi.tarkastuspoytakirja.model.ChecklistLabels
 import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 
@@ -72,6 +73,20 @@ object ReportPdfGenerator {
             checklist.forEach { item ->
                 val result = item.result.takeIf { it.isNotBlank() && it in ChecklistLabels.results }
                 writer.checklistItem(item.label.trim(), result?.let { ChecklistLabels.text(it, language) }.orEmpty())
+            }
+        }
+        val measurements = report.measurements.filter { it.hasContent() }
+        if (measurements.isNotEmpty()) {
+            writer.section(MeasurementLabels.text("heading", language))
+            measurements.forEach { item ->
+                writer.labeledField(MeasurementLabels.text("parameter", language), item.parameter)
+                writer.labeledField(MeasurementLabels.text("value", language), item.value)
+                writer.labeledField(MeasurementLabels.text("unit", language), item.unit)
+                writer.labeledField(MeasurementLabels.text("limit", language), item.permittedValue)
+                if (item.result.isNotBlank() && item.result in ChecklistLabels.results) {
+                    writer.labeledField(ChecklistLabels.text("result", language), ChecklistLabels.text(item.result, language))
+                }
+                writer.spacer(8f)
             }
         }
         val filledObservations = report.observations.filter {

@@ -180,6 +180,7 @@ class ReportRepository(private val context: Context) {
             createdAt = Instant.now().toString(),
             templateName = name.trim(),
             checklist = report.checklist.filter { it.label.isNotBlank() }.map { it.copy(result = "") },
+            measurements = report.measurements.map { it.asTemplate() }.filter { it.hasContent() },
             observations = report.observations.map { it.copy(photos = emptyList()) },
             signatureStrokes = emptyList()
         )
