@@ -125,7 +125,7 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
         Box(modifier = Modifier.width(pictureWidth).height(pictureHeight)) {
             Image(
                 painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuspro),
-                contentDescription = "Tarkastus Pro — Inspect. Document. Share.",
+                contentDescription = "Tarkastus Cloud — Inspect. Document. Share.",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
@@ -229,7 +229,7 @@ private fun UnifiedStartScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Tarkastus Pro",
+                "Tarkastus Cloud",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)

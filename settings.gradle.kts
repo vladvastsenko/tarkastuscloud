@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TarkastusPro"
+rootProject.name = "TarkastusCloud"
 include(":app", ":tarkastus")
