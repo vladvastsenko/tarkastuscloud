@@ -1,5 +1,6 @@
 package fi.vladi.tarkastuspoytakirja.pdf
 
+import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
 import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 
 import android.content.Context
@@ -256,9 +257,18 @@ object ReportPdfGenerator {
             if (observation.photos.isNotEmpty()) {
                 // Keep a clear three-line separation between the location/details and photos.
                 spacer(42f)
+                val grouped = observation.photos.groupBy { PhotoCategories.normalize(it.category) }
+                val categorized = grouped.keys.any { it.isNotEmpty() }
+                for (category in PhotoCategories.ids) {
+                    val photos = grouped[category].orEmpty()
+                    if (photos.isEmpty()) continue
+                    if (categorized) {
+                        ensureSpace(370f)
+                        section(PhotoCategories.text(category, language))
+                    }
                 var photoIndex = 0
-                while (photoIndex < observation.photos.size) {
-                    val remaining = observation.photos.size - photoIndex
+                while (photoIndex < photos.size) {
+                    val remaining = photos.size - photoIndex
                     val columns = 2
                     val maxRowsPerPage = 2
                     val remainingRows = (remaining + columns - 1) / columns
@@ -275,10 +285,11 @@ object ReportPdfGenerator {
                     }
                     val rowsOnThisPage = minOf(remainingRows, rowsThatFitAtFixedSize, maxRowsPerPage)
                     val photosOnThisPage = minOf(remaining, rowsOnThisPage * columns)
-                    val pagePhotos = observation.photos.subList(photoIndex, photoIndex + photosOnThisPage)
+                    val pagePhotos = photos.subList(photoIndex, photoIndex + photosOnThisPage)
                     drawPhotoGrid(pagePhotos, cellHeight, columns)
                     photoIndex += photosOnThisPage
-                    if (photoIndex < observation.photos.size) nextPage()
+                    if (photoIndex < photos.size) nextPage()
+                }
                 }
             }
             spacer(8f)

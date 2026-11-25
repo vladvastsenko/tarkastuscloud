@@ -77,6 +77,7 @@ import fi.vladi.tarkastuspoytakirja.model.InspectionObservation
 import fi.vladi.tarkastuspoytakirja.model.InspectorProfile
 import fi.vladi.tarkastuspoytakirja.model.ReportTypes
 import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
+import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
 import fi.vladi.tarkastuspoytakirja.model.InspectionReport
 import fi.vladi.tarkastuspoytakirja.model.ReportPhoto
 import fi.vladi.tarkastuspoytakirja.pdf.ReportPdfGenerator
@@ -654,6 +655,13 @@ private fun EditorScreen(
                     observation.photos.forEach { photo ->
                         PhotoCard(
                             photo = photo,
+                            onCategoryChange = { category ->
+                                onChange(report.copy(observations = report.observations.map { item ->
+                                    if (item.id == observation.id) item.copy(photos = item.photos.map {
+                                        if (it.id == photo.id) it.copy(category = category) else it
+                                    }) else item
+                                }))
+                            },
                             onCaptionChange = { caption ->
                                 onChange(report.copy(observations = report.observations.map { item ->
                                     if (item.id == observation.id) {
@@ -783,6 +791,7 @@ private fun Field(
 private fun PhotoCard(
     photo: ReportPhoto,
     onCaptionChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -804,6 +813,21 @@ private fun PhotoCard(
                 )
             } else {
                 Text(stringResource(R.string.loc4_image_failed, File(photo.filePath).name))
+            }
+            val language = AppLanguage.selected(LocalContext.current)
+            var categoryMenu by remember(photo.id) { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { categoryMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(PhotoCategories.text("category", language) + ": " + PhotoCategories.text(PhotoCategories.normalize(photo.category), language) + " ▾")
+                }
+                DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
+                    PhotoCategories.ids.forEach { category ->
+                        DropdownMenuItem(text = { Text(PhotoCategories.text(category, language)) }, onClick = {
+                            categoryMenu = false
+                            onCategoryChange(category)
+                        })
+                    }
+                }
             }
             Field(stringResource(R.string.loc_photo_comment), photo.caption, minLines = 2, onValueChange = onCaptionChange)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

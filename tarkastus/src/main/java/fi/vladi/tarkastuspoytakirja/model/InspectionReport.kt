@@ -77,7 +77,8 @@ data class ReportPhoto(
     val id: String = UUID.randomUUID().toString(),
     val filePath: String,
     val caption: String = "",
-    val annotatedPath: String = ""
+    val annotatedPath: String = "",
+    val category: String = ""
 )
 
 @Serializable
