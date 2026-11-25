@@ -1,0 +1,31 @@
+name: Import original PNG assets (no build)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Copy and verify original assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/vladvastsenko/valvontapoytakirja.git "$RUNNER_TEMP/source"
+          source_commit=80f845a203da9ed0484ce597426a5f9b10156756
+          for path in app/src/main/res/drawable-nodpi/tarkastus_cloud_icon.png app/src/main/res/drawable-nodpi/welcome.png; do
+            mkdir -p "$(dirname "$path")"
+            git -C "$RUNNER_TEMP/source" show "$source_commit:$path" > "$path"
+            expected=$(git -C "$RUNNER_TEMP/source" rev-parse "$source_commit:$path")
+            test "$(git hash-object "$path")" = "$expected"
+            git add "$path"
+          done
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Import verified original PNG assets"
+            git push origin HEAD:main
+          fi
