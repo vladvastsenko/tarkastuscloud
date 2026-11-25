@@ -189,4 +189,24 @@
     <string name="site_details_title">OBJEKTDETAILS</string>
     <string name="site_new_field">Neues Feld</string>
     <string name="report_inspector_title">Prüfer</string>
+    <string name="auth_verify_required">Bestätigen Sie Ihre E-Mail-Adresse, bevor Sie fortfahren.</string>
+    <string name="auth_verify_check">Bestätigung prüfen</string>
+    <string name="auth_verify_resend">Bestätigungs-E-Mail erneut senden</string>
+    <string name="auth_verify_sent">Bestätigungs-E-Mail gesendet.</string>
+    <string name="user_guide_title">Benutzerhandbuch</string>
+    <string name="inspector_edit">Prüfer bearbeiten</string>
+    <string name="inspector_save">Prüfer speichern</string>
+    <string name="subscription_title">Ihr Abonnement</string>
+    <string name="subscription_active">Werbefreies Abonnement aktiv</string>
+    <string name="subscription_free">Kostenlose Version mit Werbung</string>
+    <string name="subscription_description">Entfernen Sie Werbung mit einem persönlichen Monatsabonnement.</string>
+    <string name="subscription_buy">Werbefrei abonnieren</string>
+    <string name="subscription_restore">Käufe wiederherstellen</string>
+    <string name="subscription_manage">Abonnement verwalten</string>
+    <string name="subscription_unavailable">Abonnement noch nicht bei Google Play verfügbar.</string>
+    <string name="ad_privacy_options">Datenschutzoptionen für Werbung</string>
+    <string name="delete_account">Konto löschen</string>
+    <string name="delete_account_warning">Ihr Tarkastus-Pro-Konto wird dauerhaft gelöscht. Lokale Berichte, Einstellungen und Google-Drive-Dateien bleiben erhalten. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_account_relogin">Melden Sie sich aus Sicherheitsgründen ab und erneut an und wiederholen Sie die Kontolöschung.</string>
+    <string name="delete_account_failed">Kontolöschung fehlgeschlagen. Bitte erneut versuchen.</string>
 </resources>

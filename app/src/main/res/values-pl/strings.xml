@@ -189,4 +189,24 @@
     <string name="site_details_title">SZCZEGÓŁY OBIEKTU</string>
     <string name="site_new_field">Nowe pole</string>
     <string name="report_inspector_title">Kontroler</string>
+    <string name="auth_verify_required">Potwierdź adres e-mail przed kontynuowaniem.</string>
+    <string name="auth_verify_check">Sprawdź potwierdzenie</string>
+    <string name="auth_verify_resend">Wyślij ponownie e-mail weryfikacyjny</string>
+    <string name="auth_verify_sent">Wysłano e-mail weryfikacyjny.</string>
+    <string name="user_guide_title">Instrukcja obsługi</string>
+    <string name="inspector_edit">Edytuj kontrolera</string>
+    <string name="inspector_save">Zapisz kontrolera</string>
+    <string name="subscription_title">Twoja subskrypcja</string>
+    <string name="subscription_active">Aktywna subskrypcja bez reklam</string>
+    <string name="subscription_free">Bezpłatna wersja z reklamami</string>
+    <string name="subscription_description">Usuń reklamy dzięki indywidualnej miesięcznej subskrypcji.</string>
+    <string name="subscription_buy">Subskrybuj bez reklam</string>
+    <string name="subscription_restore">Przywróć zakupy</string>
+    <string name="subscription_manage">Zarządzaj subskrypcją</string>
+    <string name="subscription_unavailable">Subskrypcja nie jest jeszcze dostępna w Google Play.</string>
+    <string name="ad_privacy_options">Opcje prywatności reklam</string>
+    <string name="delete_account">Usuń konto</string>
+    <string name="delete_account_warning">Twoje konto Tarkastus Pro zostanie trwale usunięte. Lokalne raporty, ustawienia i pliki Dysku Google pozostaną. Tej operacji nie można cofnąć.</string>
+    <string name="delete_account_relogin">Ze względów bezpieczeństwa wyloguj się, zaloguj ponownie i powtórz usuwanie konta.</string>
+    <string name="delete_account_failed">Nie udało się usunąć konta. Spróbuj ponownie.</string>
 </resources>

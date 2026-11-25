@@ -189,4 +189,24 @@
     <string name="site_details_title">DÉTAILS DU CHANTIER</string>
     <string name="site_new_field">Nouveau champ</string>
     <string name="report_inspector_title">Contrôleur</string>
+    <string name="auth_verify_required">Vérifiez votre adresse e-mail avant de continuer.</string>
+    <string name="auth_verify_check">Vérifier la confirmation</string>
+    <string name="auth_verify_resend">Renvoyer l’e-mail de confirmation</string>
+    <string name="auth_verify_sent">E-mail de confirmation envoyé.</string>
+    <string name="user_guide_title">Guide utilisateur</string>
+    <string name="inspector_edit">Modifier le contrôleur</string>
+    <string name="inspector_save">Enregistrer le contrôleur</string>
+    <string name="subscription_title">Votre abonnement</string>
+    <string name="subscription_active">Abonnement sans publicité actif</string>
+    <string name="subscription_free">Version gratuite avec publicité</string>
+    <string name="subscription_description">Supprimez les publicités avec un abonnement mensuel individuel.</string>
+    <string name="subscription_buy">Souscrire sans publicité</string>
+    <string name="subscription_restore">Restaurer les achats</string>
+    <string name="subscription_manage">Gérer l’abonnement</string>
+    <string name="subscription_unavailable">Abonnement pas encore disponible sur Google Play.</string>
+    <string name="ad_privacy_options">Options de confidentialité publicitaire</string>
+    <string name="delete_account">Supprimer le compte</string>
+    <string name="delete_account_warning">Votre compte Tarkastus Pro sera définitivement supprimé. Les rapports locaux, paramètres et fichiers Google Drive seront conservés. Cette action est irréversible.</string>
+    <string name="delete_account_relogin">Par sécurité, déconnectez-vous, reconnectez-vous et répétez la suppression du compte.</string>
+    <string name="delete_account_failed">Échec de la suppression du compte. Réessayez.</string>
 </resources>

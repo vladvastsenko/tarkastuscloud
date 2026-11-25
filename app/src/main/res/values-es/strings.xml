@@ -189,4 +189,24 @@
     <string name="site_details_title">DETALLES DE LA OBRA</string>
     <string name="site_new_field">Nuevo campo</string>
     <string name="report_inspector_title">Inspector</string>
+    <string name="auth_verify_required">Verifique su correo antes de continuar.</string>
+    <string name="auth_verify_check">Comprobar verificación</string>
+    <string name="auth_verify_resend">Reenviar correo de verificación</string>
+    <string name="auth_verify_sent">Correo de verificación enviado.</string>
+    <string name="user_guide_title">Guía del usuario</string>
+    <string name="inspector_edit">Editar inspector</string>
+    <string name="inspector_save">Guardar inspector</string>
+    <string name="subscription_title">Su suscripción</string>
+    <string name="subscription_active">Suscripción sin anuncios activa</string>
+    <string name="subscription_free">Versión gratuita con anuncios</string>
+    <string name="subscription_description">Elimine los anuncios con una suscripción mensual individual.</string>
+    <string name="subscription_buy">Suscribirse sin anuncios</string>
+    <string name="subscription_restore">Restaurar compras</string>
+    <string name="subscription_manage">Gestionar suscripción</string>
+    <string name="subscription_unavailable">La suscripción aún no está disponible en Google Play.</string>
+    <string name="ad_privacy_options">Opciones de privacidad publicitaria</string>
+    <string name="delete_account">Eliminar cuenta</string>
+    <string name="delete_account_warning">Su cuenta Tarkastus Pro se eliminará definitivamente. Los informes locales, ajustes y archivos de Google Drive se conservarán. Esta acción es irreversible.</string>
+    <string name="delete_account_relogin">Por seguridad, cierre sesión, vuelva a iniciarla y repita la eliminación de la cuenta.</string>
+    <string name="delete_account_failed">No se pudo eliminar la cuenta. Inténtelo de nuevo.</string>
 </resources>
