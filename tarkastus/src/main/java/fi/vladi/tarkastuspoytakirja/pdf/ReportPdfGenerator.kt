@@ -38,7 +38,7 @@ object ReportPdfGenerator {
         val headerText = if (report.settingsSnapshotCreated) report.headerText else report.headerText.ifBlank { settings.headerText }
         val footerText = if (report.settingsSnapshotCreated) report.footerText else report.footerText.ifBlank { settings.footerText }
         val writer = PdfWriter(document, logoPath, headerText, footerText, totalPages, language)
-        writer.title("TARKASTUSPÖYTÄKIRJA")
+        writer.title(fi.vladi.tarkastuspoytakirja.model.ReportTypes.title(report, language))
         if (report.customerName.isNotBlank()) writer.labeledField("Tilaaja", report.customerName)
         if (report.customerBusinessId.isNotBlank()) writer.labeledField("Y-tunnus", report.customerBusinessId)
         if (report.customerAddress.isNotBlank() || report.customerPostalCode.isNotBlank() || report.customerCity.isNotBlank()) {
@@ -203,8 +203,8 @@ object ReportPdfGenerator {
 
         fun title(value: String) {
             ensureSpace(38f)
-            page.canvas.drawText(labels.text(value), margin, y + 17f, titlePaint)
-            y += 32f
+            drawWrapped(value, titlePaint, 22f)
+            y += 10f
             page.canvas.drawLine(margin, y, pageWidth - margin, y, Paint().apply {
                 color = Color.rgb(170, 185, 195)
                 strokeWidth = 1f

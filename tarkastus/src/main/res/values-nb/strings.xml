@@ -126,4 +126,5 @@
     <string name="customer_details_heading">KUNDEOPPLYSNINGER</string>
     <string name="new_site_heading">NYTT OBJEKT</string>
     <string name="site_details_heading">OBJEKTOPPLYSNINGER</string>
+    <string name="pro_document_title">Egen dokumenttittel (valgfritt)</string>
 </resources>

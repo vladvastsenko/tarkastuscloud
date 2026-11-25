@@ -126,4 +126,5 @@
     <string name="customer_details_heading">KLIENTA DATI</string>
     <string name="new_site_heading">JAUNS OBJEKTS</string>
     <string name="site_details_heading">OBJEKTA DATI</string>
+    <string name="pro_document_title">Dokumenta virsraksts (neobligāts)</string>
 </resources>

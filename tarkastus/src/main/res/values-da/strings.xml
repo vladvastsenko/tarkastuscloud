@@ -126,4 +126,5 @@
     <string name="customer_details_heading">KUNDEOPLYSNINGER</string>
     <string name="new_site_heading">NYT OBJEKT</string>
     <string name="site_details_heading">OBJEKTOPLYSNINGER</string>
+    <string name="pro_document_title">Egen dokumenttitel (valgfrit)</string>
 </resources>

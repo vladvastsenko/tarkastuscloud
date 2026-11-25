@@ -126,4 +126,5 @@
     <string name="customer_details_heading">ДАННЫЕ КЛИЕНТА</string>
     <string name="new_site_heading">НОВЫЙ ОБЪЕКТ</string>
     <string name="site_details_heading">ДАННЫЕ ОБЪЕКТА</string>
+    <string name="pro_document_title">Собственное название документа (необязательно)</string>
 </resources>

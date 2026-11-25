@@ -126,4 +126,5 @@
     <string name="customer_details_heading">ASIAKKAAN TIEDOT</string>
     <string name="new_site_heading">UUSI KOHDE</string>
     <string name="site_details_heading">KOHTEEN TIEDOT</string>
+    <string name="pro_document_title">Asiakirjan oma otsikko (valinnainen)</string>
 </resources>

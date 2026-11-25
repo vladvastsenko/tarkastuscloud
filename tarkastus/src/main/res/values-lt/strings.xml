@@ -126,4 +126,5 @@
     <string name="customer_details_heading">KLIENTO DUOMENYS</string>
     <string name="new_site_heading">NAUJAS OBJEKTAS</string>
     <string name="site_details_heading">OBJEKTO DUOMENYS</string>
+    <string name="pro_document_title">Dokumento pavadinimas (neprivalomas)</string>
 </resources>

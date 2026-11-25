@@ -126,4 +126,5 @@
     <string name="customer_details_heading">CUSTOMER DETAILS</string>
     <string name="new_site_heading">NEW SITE</string>
     <string name="site_details_heading">SITE DETAILS</string>
+    <string name="pro_document_title">Custom document title (optional)</string>
 </resources>

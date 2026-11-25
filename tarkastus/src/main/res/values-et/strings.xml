@@ -126,4 +126,5 @@
     <string name="customer_details_heading">KLIENDI ANDMED</string>
     <string name="new_site_heading">UUS OBJEKT</string>
     <string name="site_details_heading">OBJEKTI ANDMED</string>
+    <string name="pro_document_title">Dokumendi oma pealkiri (valikuline)</string>
 </resources>

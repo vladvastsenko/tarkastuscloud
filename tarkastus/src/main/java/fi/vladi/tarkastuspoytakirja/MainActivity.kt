@@ -75,6 +75,7 @@ import fi.vladi.tarkastuspoytakirja.model.CustomerSite
 import fi.vladi.tarkastuspoytakirja.model.CustomReportField
 import fi.vladi.tarkastuspoytakirja.model.InspectionObservation
 import fi.vladi.tarkastuspoytakirja.model.InspectorProfile
+import fi.vladi.tarkastuspoytakirja.model.ReportTypes
 import fi.vladi.tarkastuspoytakirja.model.InspectionReport
 import fi.vladi.tarkastuspoytakirja.model.ReportPhoto
 import fi.vladi.tarkastuspoytakirja.pdf.ReportPdfGenerator
@@ -225,8 +226,9 @@ private fun TarkastusApp() {
                         else template.observations.map { it.copy(photos = emptyList()) }
                 )))
             },
-            onCreate = {
+            onCreate = { type ->
                 saveReport(applySettingsSnapshot(InspectionReport(
+                    reportType = type,
                     inspectionDate = LocalDate.now().toString(),
                     observations = listOf(InspectionObservation())
                 )))
@@ -342,7 +344,7 @@ private fun HomeScreen(
     reports: List<InspectionReport>,
     templates: List<InspectionReport>,
     onCreateFromTemplate: (InspectionReport) -> Unit,
-    onCreate: () -> Unit,
+    onCreate: (String) -> Unit,
     onOpen: (InspectionReport) -> Unit,
     onDelete: (InspectionReport) -> Unit,
     onBackToDocumentSelection: () -> Unit
@@ -354,8 +356,20 @@ private fun HomeScreen(
         Text(stringResource(R.string.report_title_localized), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.loc3_general_intro))
         TextButton(onClick = onBackToDocumentSelection) { Text(stringResource(R.string.ui_back_reports)) }
-        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.ui_new_report))
+        var typeMenu by remember { mutableStateOf(false) }
+        val language = AppLanguage.selected(LocalContext.current)
+        Box {
+            Button(onClick = { typeMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.ui_new_report) + " ▾")
+            }
+            DropdownMenu(expanded = typeMenu, onDismissRequest = { typeMenu = false }) {
+                ReportTypes.ids.forEach { type ->
+                    DropdownMenuItem(text = { Text(ReportTypes.title(type, language)) }, onClick = {
+                        typeMenu = false
+                        onCreate(type)
+                    })
+                }
+            }
         }
         if (templates.isNotEmpty()) {
             Text(stringResource(R.string.loc_templates), style = MaterialTheme.typography.titleLarge)
@@ -375,6 +389,7 @@ private fun HomeScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(ReportTypes.title(report, language), fontWeight = FontWeight.Bold)
                         Text(report.siteAddress.ifBlank { stringResource(R.string.new_report_fallback) }, fontWeight = FontWeight.SemiBold)
                         if (report.folderPath.isNotBlank()) Text(stringResource(R.string.loc3_folder) + report.folderPath, style = MaterialTheme.typography.bodySmall)
                         Text(stringResource(R.string.loc4_inspection_date_prefix, report.inspectionDate.ifBlank { "—" }))
@@ -477,7 +492,10 @@ private fun EditorScreen(
             Spacer(Modifier.weight(1f))
             Button(onClick = onExport) { Text(stringResource(R.string.ui_create_pdf)) }
         }
-        Text(stringResource(R.string.loc2_pdf_title_tarkastus), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(ReportTypes.title(report, reportLanguage), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Field(stringResource(R.string.pro_document_title), report.documentTitle) {
+            onChange(report.copy(documentTitle = it))
+        }
         Text(stringResource(R.string.loc_fill), style = MaterialTheme.typography.bodySmall)
 
         SectionTitle(stringResource(R.string.loc_site_parties))

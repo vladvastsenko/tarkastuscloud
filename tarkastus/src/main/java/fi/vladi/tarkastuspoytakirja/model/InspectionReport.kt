@@ -39,7 +39,9 @@ data class InspectionReport(
     val signatureStrokes: List<SignatureStroke> = emptyList(),
     val signatureImagePath: String = "",
     val logoPath: String = "",
-    val footerText: String = ""
+    val footerText: String = "",
+    val reportType: String = "inspection",
+    val documentTitle: String = ""
 )
 
 @Serializable
