@@ -127,12 +127,11 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
         val pictureHeight = pictureWidth * 1.5f
         Box(modifier = Modifier.width(pictureWidth).height(pictureHeight)) {
             Image(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.pro_welcome),
+                painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuspro),
                 contentDescription = "Tarkastus Pro — Inspect. Document. Share.",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
-            Text("Tarkastus Pro", modifier = Modifier.align(Alignment.TopCenter).padding(top = 32.dp), color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
                     .width(pictureWidth * 0.78f)
