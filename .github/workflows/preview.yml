@@ -1,4 +1,4 @@
-name: Tarkastus Pro Preview APK
+name: Tarkastus Cloud Preview APK
 on:
   push:
     branches: [main]
@@ -20,6 +20,6 @@ jobs:
       - run: gradle :app:assembleDebug -PofflinePreview=true --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: Tarkastus-Pro-0.1.0-Preview
+          name: Tarkastus-Cloud-0.1.0-Preview
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

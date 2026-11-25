@@ -18,7 +18,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "fi.vladi.tarkastuspro"
+        applicationId = "fi.vladi.tarkastuscloud"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
