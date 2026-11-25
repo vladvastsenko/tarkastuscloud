@@ -128,7 +128,7 @@
     <string name="cloud_folder_selected">Wybrano folder przechowywania.</string>
     <string name="cloud_choose_folder">Wybierz folder Dysku Google</string>
     <string name="cloud_sync">Synchronizuj teraz</string>
-    <string name="cloud_sync_hint">Synchronizacja przenosi raporty, zdjęcia, szablony, ustawienia i gotowe pliki PDF z Documents/TarkastusPro/Raportit/PDF. Użyj tego samego folderu Dysku na obu urządzeniach. Synchronizacja jest ręczna.</string>
+    <string name="cloud_sync_hint">Synchronizacja przenosi raporty, zdjęcia, szablony, ustawienia i gotowe pliki PDF z Documents/TarkastusCloud/Raportit/PDF. Użyj tego samego folderu Dysku na obu urządzeniach. Synchronizacja jest ręczna.</string>
     <string name="cloud_backup">Utwórz oddzielną kopię zapasową</string>
     <string name="cloud_backups">Zapisane kopie zapasowe</string>
     <string name="cloud_empty">Brak kopii zapasowych. Utwórz oddzielną kopię, aby ją tutaj zobaczyć.</string>
@@ -153,7 +153,7 @@
     <string name="cloud_backup_saved">Zapisano kopię. %1$s</string>
     <string name="cloud_backup_error">Błąd tworzenia kopii: %1$s</string>
     <string name="cloud_size_label">Rozmiar: %1$s</string>
-    <string name="cloud_sync_warning">Synchronizacja działa w obu kierunkach. Jeśli plik zmieniono inaczej na dwóch urządzeniach, wersja lokalna zostanie zapisana w TarkastusPro_Sync/Conflicts na Dysku Google, a konflikt zostanie zgłoszony. Nie zamykaj aplikacji podczas synchronizacji.</string>
+    <string name="cloud_sync_warning">Synchronizacja działa w obu kierunkach. Jeśli plik zmieniono inaczej na dwóch urządzeniach, wersja lokalna zostanie zapisana w TarkastusCloud_Sync/Conflicts na Dysku Google, a konflikt zostanie zgłoszony. Nie zamykaj aplikacji podczas synchronizacji.</string>
     <string name="cloud_restore_confirm_details">Przywrócić kopię z %1$s (%2$s)? Przed przywróceniem automatycznie powstanie nowa kopia aktualnych danych na Dysku Google.</string>
     <string name="cloud_restore_error">Błąd przywracania: %1$s</string>
     <string name="cloud_unknown_error">Nieznany błąd</string>

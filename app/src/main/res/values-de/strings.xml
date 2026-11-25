@@ -128,7 +128,7 @@
     <string name="cloud_folder_selected">Speicherordner ausgewählt.</string>
     <string name="cloud_choose_folder">Google-Drive-Ordner auswählen</string>
     <string name="cloud_sync">Jetzt synchronisieren</string>
-    <string name="cloud_sync_hint">Die Synchronisierung überträgt Berichte, Fotos, Vorlagen, Einstellungen und fertige PDFs aus Documents/TarkastusPro/Raportit/PDF. Verwenden Sie auf beiden Geräten denselben Drive-Ordner. Die Synchronisierung erfolgt manuell.</string>
+    <string name="cloud_sync_hint">Die Synchronisierung überträgt Berichte, Fotos, Vorlagen, Einstellungen und fertige PDFs aus Documents/TarkastusCloud/Raportit/PDF. Verwenden Sie auf beiden Geräten denselben Drive-Ordner. Die Synchronisierung erfolgt manuell.</string>
     <string name="cloud_backup">Separate Sicherung erstellen</string>
     <string name="cloud_backups">Gespeicherte Sicherungen</string>
     <string name="cloud_empty">Noch keine Sicherungen. Erstellen Sie eine separate Sicherung, um sie hier anzuzeigen.</string>
@@ -153,7 +153,7 @@
     <string name="cloud_backup_saved">Sicherung gespeichert. %1$s</string>
     <string name="cloud_backup_error">Sicherung fehlgeschlagen: %1$s</string>
     <string name="cloud_size_label">Größe: %1$s</string>
-    <string name="cloud_sync_warning">Die Synchronisierung erfolgt in beide Richtungen. Wurde eine Datei auf zwei Geräten unterschiedlich geändert, wird die lokale Version in TarkastusPro_Sync/Conflicts auf Google Drive gespeichert und der Konflikt gemeldet. Schließen Sie die App während der Synchronisierung nicht.</string>
+    <string name="cloud_sync_warning">Die Synchronisierung erfolgt in beide Richtungen. Wurde eine Datei auf zwei Geräten unterschiedlich geändert, wird die lokale Version in TarkastusCloud_Sync/Conflicts auf Google Drive gespeichert und der Konflikt gemeldet. Schließen Sie die App während der Synchronisierung nicht.</string>
     <string name="cloud_restore_confirm_details">Sicherung vom %1$s (%2$s) wiederherstellen? Vorher wird automatisch eine neue Sicherung der aktuellen Daten auf Google Drive erstellt.</string>
     <string name="cloud_restore_error">Wiederherstellung fehlgeschlagen: %1$s</string>
     <string name="cloud_unknown_error">Unbekannter Fehler</string>

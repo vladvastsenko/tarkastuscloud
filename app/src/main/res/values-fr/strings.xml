@@ -128,7 +128,7 @@
     <string name="cloud_folder_selected">Dossier de stockage sélectionné.</string>
     <string name="cloud_choose_folder">Choisir le dossier Google Drive</string>
     <string name="cloud_sync">Synchroniser maintenant</string>
-    <string name="cloud_sync_hint">La synchronisation transfère les rapports, photos, modèles, paramètres et PDF terminés depuis Documents/TarkastusPro/Raportit/PDF. Utilisez le même dossier Drive sur les deux appareils. La synchronisation est manuelle.</string>
+    <string name="cloud_sync_hint">La synchronisation transfère les rapports, photos, modèles, paramètres et PDF terminés depuis Documents/TarkastusCloud/Raportit/PDF. Utilisez le même dossier Drive sur les deux appareils. La synchronisation est manuelle.</string>
     <string name="cloud_backup">Créer une sauvegarde séparée</string>
     <string name="cloud_backups">Sauvegardes enregistrées</string>
     <string name="cloud_empty">Aucune sauvegarde. Créez une sauvegarde séparée pour la voir ici.</string>
@@ -153,7 +153,7 @@
     <string name="cloud_backup_saved">Sauvegarde enregistrée. %1$s</string>
     <string name="cloud_backup_error">Échec de la sauvegarde : %1$s</string>
     <string name="cloud_size_label">Taille : %1$s</string>
-    <string name="cloud_sync_warning">La synchronisation fonctionne dans les deux sens. Si un fichier a été modifié différemment sur deux appareils, la version locale est enregistrée dans TarkastusPro_Sync/Conflicts sur Google Drive et le conflit est signalé. Ne fermez pas l’application pendant la synchronisation.</string>
+    <string name="cloud_sync_warning">La synchronisation fonctionne dans les deux sens. Si un fichier a été modifié différemment sur deux appareils, la version locale est enregistrée dans TarkastusCloud_Sync/Conflicts sur Google Drive et le conflit est signalé. Ne fermez pas l’application pendant la synchronisation.</string>
     <string name="cloud_restore_confirm_details">Restaurer la sauvegarde du %1$s (%2$s) ? Une nouvelle sauvegarde des données actuelles sera créée automatiquement sur Google Drive avant la restauration.</string>
     <string name="cloud_restore_error">Échec de la restauration : %1$s</string>
     <string name="cloud_unknown_error">Erreur inconnue</string>

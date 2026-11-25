@@ -128,7 +128,7 @@
     <string name="cloud_folder_selected">Cartella di archiviazione selezionata.</string>
     <string name="cloud_choose_folder">Scegli cartella Google Drive</string>
     <string name="cloud_sync">Sincronizza ora</string>
-    <string name="cloud_sync_hint">La sincronizzazione trasferisce rapporti, foto, modelli, impostazioni e PDF completati da Documents/TarkastusPro/Raportit/PDF. Usa la stessa cartella Drive su entrambi i dispositivi. La sincronizzazione è manuale.</string>
+    <string name="cloud_sync_hint">La sincronizzazione trasferisce rapporti, foto, modelli, impostazioni e PDF completati da Documents/TarkastusCloud/Raportit/PDF. Usa la stessa cartella Drive su entrambi i dispositivi. La sincronizzazione è manuale.</string>
     <string name="cloud_backup">Crea backup separato</string>
     <string name="cloud_backups">Backup salvati</string>
     <string name="cloud_empty">Nessun backup. Crea un backup separato per visualizzarlo qui.</string>
@@ -153,7 +153,7 @@
     <string name="cloud_backup_saved">Backup salvato. %1$s</string>
     <string name="cloud_backup_error">Backup non riuscito: %1$s</string>
     <string name="cloud_size_label">Dimensione: %1$s</string>
-    <string name="cloud_sync_warning">La sincronizzazione è bidirezionale. Se un file viene modificato diversamente su due dispositivi, la versione locale viene salvata in TarkastusPro_Sync/Conflicts su Google Drive e il conflitto viene segnalato. Non chiudere l’app durante la sincronizzazione.</string>
+    <string name="cloud_sync_warning">La sincronizzazione è bidirezionale. Se un file viene modificato diversamente su due dispositivi, la versione locale viene salvata in TarkastusCloud_Sync/Conflicts su Google Drive e il conflitto viene segnalato. Non chiudere l’app durante la sincronizzazione.</string>
     <string name="cloud_restore_confirm_details">Ripristinare il backup del %1$s (%2$s)? Prima del ripristino verrà creato automaticamente un nuovo backup dei dati attuali su Google Drive.</string>
     <string name="cloud_restore_error">Ripristino non riuscito: %1$s</string>
     <string name="cloud_unknown_error">Errore sconosciuto</string>
