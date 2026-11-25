@@ -193,8 +193,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     }
     val consent = remember(context) { AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent.request() }
-    var showValvoja by remember { mutableStateOf(false) }
-    var openSettings by remember { mutableStateOf(false) }
+    var showSharedSettings by remember { mutableStateOf(false) }
     var showManagement by remember { mutableStateOf(false) }
     var showCloudBackup by remember { mutableStateOf(false) }
     var showUserGuide by remember { mutableStateOf(false) }
@@ -209,25 +208,18 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             Box(modifier = Modifier.weight(1f)) { CloudBackupScreen(onBack = { showCloudBackup = false }) }
             if (consent.canRequestAds) TestAdMobBanner()
         }
-    } else if (showValvoja) {
+    } else if (showSharedSettings) {
         ValvontaApp(
-            initialShowSettings = openSettings,
-            onBackToLauncher = {
-                showValvoja = false
-                openSettings = false
-            },
-            onBackFromSettings = {
-                showValvoja = false
-                openSettings = false
-            }
+            initialShowSettings = true,
+            onBackToLauncher = { showSharedSettings = false },
+            onBackFromSettings = { showSharedSettings = false }
         )
     } else if (showManagement) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) {
                 ManagementScreen(
             onSettings = {
-                openSettings = true
-                showValvoja = true
+                showSharedSettings = true
             },
             onCloudBackup = { showCloudBackup = true },
             onUserGuide = { showUserGuide = true },
@@ -240,10 +232,6 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
         }
     } else {
         UnifiedStartScreen(
-            onValvoja = {
-                openSettings = false
-                showValvoja = true
-            },
             onTarkastus = {
                 context.startActivity(Intent(context, TarkastusMainActivity::class.java))
             },
@@ -255,7 +243,6 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
 
 @Composable
 private fun UnifiedStartScreen(
-    onValvoja: () -> Unit,
     onTarkastus: () -> Unit,
     onManagement: () -> Unit,
     showAds: Boolean
@@ -269,7 +256,7 @@ private fun UnifiedStartScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Tarkastus",
+                "Tarkastus Pro",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -280,9 +267,6 @@ private fun UnifiedStartScreen(
         }
         Spacer(Modifier.height(20.dp))
         Text(stringResource(R.string.choose_report))
-        Button(onClick = onValvoja, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.report_valvonta))
-        }
         Button(onClick = onTarkastus, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.report_tarkastus))
         }
