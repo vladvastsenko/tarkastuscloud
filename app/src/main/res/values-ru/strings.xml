@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Tarkastus Cloud</string>
+    <string name="app_name">Tarkastus Pro</string>
     <string name="choose_report">Выберите тип создаваемого отчёта.</string>
     <string name="settings_sync">Настройки и синхронизация</string>
     <string name="shared_settings">Общие настройки</string>
@@ -152,7 +152,7 @@
     <string name="cloud_folder_selected">Папка хранения выбрана.</string>
     <string name="cloud_choose_folder">Выбрать папку Google Drive</string>
     <string name="cloud_sync">Синхронизировать сейчас</string>
-    <string name="cloud_sync_hint">Синхронизация передаёт отчёты, фотографии, шаблоны, настройки и готовые PDF из Documents/Tarkastus/Raportit/PDF. Используйте одну папку Drive на всех устройствах. Пока синхронизация запускается вручную.</string>
+    <string name="cloud_sync_hint">Синхронизация передаёт отчёты, фотографии, шаблоны, настройки и готовые PDF из Documents/TarkastusPro/Raportit/PDF. Используйте одну папку Drive на всех устройствах. Пока синхронизация запускается вручную.</string>
     <string name="cloud_backup">Создать отдельную резервную копию</string>
     <string name="cloud_backups">Сохранённые резервные копии</string>
     <string name="cloud_empty">Резервных копий пока нет. Создайте копию, чтобы она появилась здесь.</string>
@@ -195,7 +195,7 @@
     <string name="cloud_backup_saved">Резервная копия сохранена. %1$s</string>
     <string name="cloud_backup_error">Ошибка резервного копирования: %1$s</string>
     <string name="cloud_size_label">Размер: %1$s</string>
-    <string name="cloud_sync_warning">Синхронизация выполняется в обе стороны. Если один файл был изменён по-разному на двух устройствах, локальная версия сохраняется в папке Tarkastus_Sync/Conflicts на Google Диске. Не закрывайте приложение во время синхронизации.</string>
+    <string name="cloud_sync_warning">Синхронизация выполняется в обе стороны. Если один файл был изменён по-разному на двух устройствах, локальная версия сохраняется в папке TarkastusPro_Sync/Conflicts на Google Диске. Не закрывайте приложение во время синхронизации.</string>
     <string name="cloud_restore_confirm_details">Восстановить копию от %1$s (%2$s)? Перед восстановлением текущие данные будут автоматически сохранены в новую резервную копию на Google Диске.</string>
     <string name="cloud_restore_error">Ошибка восстановления: %1$s</string>
     <string name="cloud_unknown_error">Неизвестная ошибка</string>
@@ -229,7 +229,7 @@
     <string name="bio_cancelled">Проверка отменена. Попробуйте снова.</string>
     <string name="bio_sign_in_again">Биометрия недоступна. Войдите снова.</string>
     <string name="bio_offer_title">Биометрический вход</string>
-    <string name="bio_offer_message">Защитить вход в Tarkastus Cloud биометрией? Настройку можно изменить позже.</string>
+    <string name="bio_offer_message">Защитить вход в Tarkastus Pro биометрией? Настройку можно изменить позже.</string>
     <string name="bio_enable">Включить</string>
     <string name="bio_not_now">Не сейчас</string>
     <string name="bio_unlock">Разблокировать биометрией</string>
@@ -265,7 +265,7 @@
     <string name="cloud_invite_teammate">Пригласить через Google Drive</string>
     <string name="cloud_invite_hint">Найдите папку в Google Drive и нажмите «Поделиться». Приложение не может открыть выбранную папку напрямую в Drive.</string>
     <string name="cloud_share_guide_title">Как предоставить доступ к папке</string>
-    <string name="cloud_share_guide_steps">1. Откройте Google Drive под аккаунтом владельца общей папки.\n2. Найдите общую папку Tarkastus Cloud.\n3. Нажмите три точки → Поделиться / Управление доступом.\n4. Введите email сотрудника и выберите Редактор.\n5. Отправьте приглашение. Сотрудник принимает его и выбирает общую папку в Tarkastus Cloud.\n\nНе открывайте доступ к папке личных резервных копий.</string>
+    <string name="cloud_share_guide_steps">1. Откройте Google Drive под аккаунтом владельца общей папки.\n2. Найдите общую папку Tarkastus Pro.\n3. Нажмите три точки → Поделиться / Управление доступом.\n4. Введите email сотрудника и выберите Редактор.\n5. Отправьте приглашение. Сотрудник принимает его и выбирает общую папку в Tarkastus Pro.\n\nНе открывайте доступ к папке личных резервных копий.</string>
     <string name="cloud_share_open_drive">Открыть Google Drive</string>
     <string name="cloud_restore_success">Резервная копия успешно восстановлена.</string>
     <string name="cloud_choose_private_backup_folder">Выбрать папку личных копий</string>
@@ -289,7 +289,7 @@
     <string name="subscription_unavailable">Подписка пока недоступна в Google Play.</string>
     <string name="ad_privacy_options">Настройки конфиденциальности рекламы</string>
     <string name="delete_account">Удалить аккаунт</string>
-    <string name="delete_account_warning">Ваш аккаунт Tarkastus Cloud будет удалён навсегда. Локальные отчёты, настройки и файлы Google Drive сохранятся. Отменить удаление невозможно.</string>
+    <string name="delete_account_warning">Ваш аккаунт Tarkastus Pro будет удалён навсегда. Локальные отчёты, настройки и файлы Google Drive сохранятся. Отменить удаление невозможно.</string>
     <string name="delete_account_relogin">Для безопасности выйдите, войдите снова и повторите удаление аккаунта.</string>
     <string name="delete_account_failed">Не удалось удалить аккаунт. Попробуйте снова.</string>
 </resources>

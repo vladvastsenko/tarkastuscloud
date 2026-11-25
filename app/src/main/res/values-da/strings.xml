@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Tarkastus Cloud</string>
+    <string name="app_name">Tarkastus Pro</string>
     <string name="choose_report">Vælg hvilken rapport du vil oprette.</string>
     <string name="settings_sync">Indstillinger og synkronisering</string>
     <string name="shared_settings">Fælles indstillinger</string>
@@ -152,7 +152,7 @@
     <string name="cloud_folder_selected">Lagringsmappe valgt.</string>
     <string name="cloud_choose_folder">Vælg Google Drive-mappe</string>
     <string name="cloud_sync">Synkroniser nu</string>
-    <string name="cloud_sync_hint">Synkronisering overfører rapporter, fotos, skabeloner, indstillinger og PDF-filer fra Documents/Tarkastus/Raportit/PDF. Brug samme Drive-mappe på alle enheder. Synkronisering udføres manuelt.</string>
+    <string name="cloud_sync_hint">Synkronisering overfører rapporter, fotos, skabeloner, indstillinger og PDF-filer fra Documents/TarkastusPro/Raportit/PDF. Brug samme Drive-mappe på alle enheder. Synkronisering udføres manuelt.</string>
     <string name="cloud_backup">Opret separat sikkerhedskopi</string>
     <string name="cloud_backups">Gemte sikkerhedskopier</string>
     <string name="cloud_empty">Ingen sikkerhedskopier endnu. Opret en separat sikkerhedskopi.</string>
@@ -195,7 +195,7 @@
     <string name="cloud_backup_saved">Sikkerhedskopi gemt. %1$s</string>
     <string name="cloud_backup_error">Sikkerhedskopiering mislykkedes: %1$s</string>
     <string name="cloud_size_label">Størrelse: %1$s</string>
-    <string name="cloud_sync_warning">Synkronisering fungerer i begge retninger. Hvis en fil er ændret forskelligt på to enheder, gemmes den lokale version i Tarkastus_Sync/Conflicts på Google Drive, og konflikten rapporteres. Luk ikke appen under synkronisering.</string>
+    <string name="cloud_sync_warning">Synkronisering fungerer i begge retninger. Hvis en fil er ændret forskelligt på to enheder, gemmes den lokale version i TarkastusPro_Sync/Conflicts på Google Drive, og konflikten rapporteres. Luk ikke appen under synkronisering.</string>
     <string name="cloud_restore_confirm_details">Gendan sikkerhedskopi fra %1$s (%2$s)? En ny kopi af aktuelle data oprettes automatisk på Google Drive før gendannelse.</string>
     <string name="cloud_restore_error">Gendannelse mislykkedes: %1$s</string>
     <string name="cloud_unknown_error">Ukendt fejl</string>
@@ -229,7 +229,7 @@
     <string name="bio_cancelled">Godkendelsen blev annulleret. Prøv igen.</string>
     <string name="bio_sign_in_again">Biometri er ikke tilgængelig. Log ind igen.</string>
     <string name="bio_offer_title">Biometrisk login</string>
-    <string name="bio_offer_message">Vil du beskytte Tarkastus Cloud med biometri? Du kan ændre dette i indstillingerne.</string>
+    <string name="bio_offer_message">Vil du beskytte Tarkastus Pro med biometri? Du kan ændre dette i indstillingerne.</string>
     <string name="bio_enable">Aktivér</string>
     <string name="bio_not_now">Ikke nu</string>
     <string name="bio_unlock">Lås op med biometri</string>
@@ -265,7 +265,7 @@
     <string name="cloud_invite_teammate">Inviter via Google Drev</string>
     <string name="cloud_invite_hint">Find mappen i Drev, og vælg Del. Appen kan ikke åbne den valgte mappe direkte i Drev.</string>
     <string name="cloud_share_guide_title">Sådan deler du mappen</string>
-    <string name="cloud_share_guide_steps">1. Åbn Google Drive med kontoen, der ejer den delte mappe.\n2. Find Tarkastus Clouds delte mappe.\n3. Tryk på de tre prikker → Del / Administrer adgang.\n4. Indtast medarbejderens e-mail og vælg Redaktør.\n5. Send invitationen. Medarbejderen accepterer og vælger mappen i Tarkastus Cloud.\n\nDel ikke mappen med personlige sikkerhedskopier.</string>
+    <string name="cloud_share_guide_steps">1. Åbn Google Drive med kontoen, der ejer den delte mappe.\n2. Find Tarkastus Pros delte mappe.\n3. Tryk på de tre prikker → Del / Administrer adgang.\n4. Indtast medarbejderens e-mail og vælg Redaktør.\n5. Send invitationen. Medarbejderen accepterer og vælger mappen i Tarkastus Pro.\n\nDel ikke mappen med personlige sikkerhedskopier.</string>
     <string name="cloud_share_open_drive">Åbn Google Drive</string>
     <string name="cloud_restore_success">Sikkerhedskopien er gendannet.</string>
     <string name="cloud_choose_private_backup_folder">Vælg mappe til personlige sikkerhedskopier</string>
@@ -289,7 +289,7 @@
     <string name="subscription_unavailable">Abonnementet er endnu ikke tilgængeligt i Google Play.</string>
     <string name="ad_privacy_options">Privatlivsindstillinger for annoncer</string>
     <string name="delete_account">Slet konto</string>
-    <string name="delete_account_warning">Din Tarkastus Cloud-konto slettes permanent. Lokale rapporter, indstillinger og Google Drive-filer bevares. Handlingen kan ikke fortrydes.</string>
+    <string name="delete_account_warning">Din Tarkastus Pro-konto slettes permanent. Lokale rapporter, indstillinger og Google Drive-filer bevares. Handlingen kan ikke fortrydes.</string>
     <string name="delete_account_relogin">Log af og på igen af sikkerhedshensyn, og gentag sletningen.</string>
     <string name="delete_account_failed">Kontoen kunne ikke slettes. Prøv igen.</string>
 </resources>
