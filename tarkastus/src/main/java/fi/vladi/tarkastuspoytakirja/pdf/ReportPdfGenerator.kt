@@ -1,6 +1,7 @@
 package fi.vladi.tarkastuspoytakirja.pdf
 
 import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
+import fi.vladi.tarkastuspoytakirja.model.ChecklistLabels
 import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 
 import android.content.Context
@@ -65,8 +66,18 @@ object ReportPdfGenerator {
             if (report.customFieldsTitle.isNotBlank()) writer.section(if (report.customFieldsTitle.trim() == "OMAT LISÄKENTÄT") PdfLabels(language).text("OMAT LISÄKENTÄT") else report.customFieldsTitle.trim())
             filledCustomFields.forEach { field -> writer.field(field.label, field.value) }
         }
+        val checklist = report.checklist.filter { it.label.isNotBlank() }
+        if (checklist.isNotEmpty()) {
+            writer.section(ChecklistLabels.text("heading", language))
+            checklist.forEach { item ->
+                val result = item.result.takeIf { it.isNotBlank() && it in ChecklistLabels.results }
+                writer.checklistItem(item.label.trim(), result?.let { ChecklistLabels.text(it, language) }.orEmpty())
+            }
+        }
         val filledObservations = report.observations.filter {
-            it.location.isNotBlank() || it.description.isNotBlank() || it.recommendedAction.isNotBlank() || it.photos.isNotEmpty()
+            it.location.isNotBlank() || it.description.isNotBlank() || it.recommendedAction.isNotBlank() || it.photos.isNotEmpty() ||
+                it.status.isNotBlank() || it.priority.isNotBlank() || it.responsiblePerson.isNotBlank() ||
+                it.remediationDeadline.isNotBlank() || it.reinspectionDate.isNotBlank()
         }
         if (filledObservations.isNotEmpty()) {
             writer.section("TARKASTUSKOHTEET")
@@ -243,6 +254,13 @@ object ReportPdfGenerator {
             if (value.isBlank()) return
             val emphasisPaint = Paint(sectionPaint).apply { textSize = 13f }
             drawWrapped(value, emphasisPaint, 16f)
+        }
+
+        fun checklistItem(label: String, result: String) {
+            ensureSpace(32f)
+            drawWrapped(label, bodyPaint, 14f)
+            if (result.isNotBlank()) drawWrapped(result, sectionPaint, 16f)
+            spacer(8f)
         }
 
         fun observation(observation: InspectionObservation) {

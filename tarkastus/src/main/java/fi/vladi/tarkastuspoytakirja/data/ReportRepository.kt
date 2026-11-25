@@ -179,6 +179,7 @@ class ReportRepository(private val context: Context) {
             id = java.util.UUID.randomUUID().toString(),
             createdAt = Instant.now().toString(),
             templateName = name.trim(),
+            checklist = report.checklist.filter { it.label.isNotBlank() }.map { it.copy(result = "") },
             observations = report.observations.map { it.copy(photos = emptyList()) },
             signatureStrokes = emptyList()
         )

@@ -41,7 +41,15 @@ data class InspectionReport(
     val logoPath: String = "",
     val footerText: String = "",
     val reportType: String = "inspection",
-    val documentTitle: String = ""
+    val documentTitle: String = "",
+    val checklist: List<ChecklistItem> = emptyList()
+)
+
+@Serializable
+data class ChecklistItem(
+    val id: String = UUID.randomUUID().toString(),
+    val label: String = "",
+    val result: String = ""
 )
 
 @Serializable

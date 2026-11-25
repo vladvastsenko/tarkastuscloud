@@ -78,6 +78,8 @@ import fi.vladi.tarkastuspoytakirja.model.InspectorProfile
 import fi.vladi.tarkastuspoytakirja.model.ReportTypes
 import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 import fi.vladi.tarkastuspoytakirja.model.PhotoCategories
+import fi.vladi.tarkastuspoytakirja.model.ChecklistItem
+import fi.vladi.tarkastuspoytakirja.model.ChecklistLabels
 import fi.vladi.tarkastuspoytakirja.model.InspectionReport
 import fi.vladi.tarkastuspoytakirja.model.ReportPhoto
 import fi.vladi.tarkastuspoytakirja.pdf.ReportPdfGenerator
@@ -224,6 +226,7 @@ private fun TarkastusApp() {
                     id = java.util.UUID.randomUUID().toString(),
                     createdAt = LocalDate.now().toString(),
                     templateName = "",
+                    checklist = template.checklist.map { it.copy(result = "") },
                     observations = if (template.observations.isEmpty()) listOf(InspectionObservation())
                         else template.observations.map { it.copy(photos = emptyList(), status = "", remediationDeadline = "", reinspectionDate = "") }
                 )))
@@ -616,6 +619,9 @@ private fun EditorScreen(
             modifier = Modifier.fillMaxWidth()
         ) { Text(stringResource(R.string.ui_add_field)) }
 
+        ChecklistEditor(report.checklist, AppLanguage.selected(pdfContext)) { items ->
+            onChange(report.copy(checklist = items))
+        }
         SectionTitle(stringResource(R.string.loc_observations_section))
         report.observations.forEachIndexed { index, observation ->
             Card(
@@ -1081,6 +1087,48 @@ private fun FollowUpChoice(label: String, value: String, options: List<String>, 
                     onChange(option)
                 })
             }
+        }
+    }
+}
+
+@Composable
+private fun ChecklistEditor(items: List<ChecklistItem>, language: String, onChange: (List<ChecklistItem>) -> Unit) {
+    var expanded by remember { mutableStateOf(items.isNotEmpty()) }
+    TextButton(onClick = { expanded = !expanded }) {
+        Text(ChecklistLabels.text("heading", language) + " (" + items.size + ")" + if (expanded) " ▴" else " ▾")
+    }
+    if (expanded) {
+        items.forEach { item ->
+            androidx.compose.runtime.key(item.id) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Field(ChecklistLabels.text("item", language), item.label) { value ->
+                            onChange(items.map { if (it.id == item.id) it.copy(label = value) else it })
+                        }
+                        var menu by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text(ChecklistLabels.text("result", language) + ": " +
+                                    ChecklistLabels.text(item.result.ifBlank { "none" }, language) + " ▾")
+                            }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                ChecklistLabels.results.forEach { result ->
+                                    DropdownMenuItem(text = { Text(ChecklistLabels.text(result.ifBlank { "none" }, language)) }, onClick = {
+                                        menu = false
+                                        onChange(items.map { if (it.id == item.id) it.copy(result = result) else it })
+                                    })
+                                }
+                            }
+                        }
+                        TextButton(onClick = { onChange(items.filterNot { it.id == item.id }) }) {
+                            Text(stringResource(R.string.ui_delete))
+                        }
+                    }
+                }
+            }
+        }
+        OutlinedButton(onClick = { onChange(items + ChecklistItem()) }, modifier = Modifier.fillMaxWidth()) {
+            Text(ChecklistLabels.text("add", language))
         }
     }
 }
