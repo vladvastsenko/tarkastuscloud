@@ -124,7 +124,7 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
         val pictureHeight = pictureWidth * 1.5f
         Box(modifier = Modifier.width(pictureWidth).height(pictureHeight)) {
             Image(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuspro),
+                painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuscloud),
                 contentDescription = "Tarkastus Cloud — Inspect. Document. Share.",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()

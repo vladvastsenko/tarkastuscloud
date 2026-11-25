@@ -9,9 +9,9 @@ plugins {
 val preview = providers.gradleProperty("offlinePreview").orNull == "true"
 if (!preview) apply(plugin = "com.google.gms.google-services")
 
-val cloudKeystorePath = System.getenv("PRO_KEYSTORE_PATH")
-val cloudKeystorePassword = System.getenv("PRO_KEYSTORE_PASSWORD")
-val cloudKeyAlias = System.getenv("PRO_KEY_ALIAS")
+val cloudKeystorePath = System.getenv("CLOUD_KEYSTORE_PATH")
+val cloudKeystorePassword = System.getenv("CLOUD_KEYSTORE_PASSWORD")
+val cloudKeyAlias = System.getenv("CLOUD_KEY_ALIAS")
 
 android {
     namespace = "fi.vladi.valvontapoytakirja"
