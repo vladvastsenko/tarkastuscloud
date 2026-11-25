@@ -224,7 +224,7 @@ private fun TarkastusApp() {
                     createdAt = LocalDate.now().toString(),
                     templateName = "",
                     observations = if (template.observations.isEmpty()) listOf(InspectionObservation())
-                        else template.observations.map { it.copy(photos = emptyList()) }
+                        else template.observations.map { it.copy(photos = emptyList(), status = "", remediationDeadline = "", reinspectionDate = "") }
                 )))
             },
             onCreate = { type ->

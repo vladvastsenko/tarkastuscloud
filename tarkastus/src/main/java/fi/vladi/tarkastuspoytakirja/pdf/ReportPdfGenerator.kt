@@ -101,7 +101,7 @@ object ReportPdfGenerator {
         private val headerText: String,
         private val footerText: String,
         private val totalPages: Int?,
-        language: String
+        private val language: String
     ) {
         private val labels = PdfLabels(language)
         val pageCount: Int get() = pageNumber
