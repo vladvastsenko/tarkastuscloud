@@ -93,6 +93,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -258,7 +259,7 @@ private fun TarkastusApp() {
             onBack = {
                 coroutineScope.launch {
                     pendingGalleryJob?.join()
-                    pendingSaveJob?.cancel()
+                    pendingSaveJob?.cancelAndJoin()
                     val latest = currentReport ?: active
                     withContext(Dispatchers.IO) { repository.save(latest) }
                     reports = withContext(Dispatchers.IO) { repository.listReports() }
@@ -276,8 +277,11 @@ private fun TarkastusApp() {
                 galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             },
             onSaveTemplate = { name ->
-                repository.saveTemplate(active, name)
-                templates = repository.listTemplates()
+                coroutineScope.launch {
+                    val latest = currentReport ?: active
+                    withContext(Dispatchers.IO) { repository.saveTemplate(latest, name) }
+                    templates = withContext(Dispatchers.IO) { repository.listTemplates() }
+                }
             },
             onPreview = {
                 coroutineScope.launch {

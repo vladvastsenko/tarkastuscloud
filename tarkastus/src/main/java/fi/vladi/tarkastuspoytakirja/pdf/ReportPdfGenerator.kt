@@ -31,9 +31,12 @@ object ReportPdfGenerator {
 
         val finalPass = render(report, settings, totalPages, language = selectedLanguage)
         val exportDirectory = File(context.cacheDir, "exports").apply { mkdirs() }
-        val output = File(exportDirectory, PdfFileNames.name(report.pdfLanguage.ifBlank { selectedLanguage }, "tarkastus", report.siteAddress))
-        FileOutputStream(output).use { finalPass.first.writeTo(it) }
-        finalPass.first.close()
+        val output = File(exportDirectory, PdfFileNames.name(selectedLanguage, fi.vladi.tarkastuspoytakirja.model.ReportTypes.title(report, selectedLanguage), report.siteAddress))
+        try {
+            FileOutputStream(output).use { finalPass.first.writeTo(it) }
+        } finally {
+            finalPass.first.close()
+        }
         return output
     }
 

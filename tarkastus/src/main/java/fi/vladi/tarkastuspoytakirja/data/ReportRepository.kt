@@ -31,7 +31,7 @@ class ReportRepository(private val context: Context) {
             .getOrDefault(AppSettings())
 
     fun saveSettings(settings: AppSettings) {
-        settingsFile().writeText(json.encodeToString(AppSettings.serializer(), settings))
+        settingsFile().writeAtomicText(json.encodeToString(AppSettings.serializer(), settings))
         SharedDocumentsArchive.archiveText(context, json.encodeToString(AppSettings.serializer(), settings), "Asetukset", "app_settings.json")
         File(settings.logoPath).takeIf { it.isFile }?.let { logo ->
             SharedDocumentsArchive.archiveFile(context, logo, "Asetukset", logo.name)
@@ -65,7 +65,7 @@ class ReportRepository(private val context: Context) {
 
     fun saveCustomer(customer: CustomerProfile) {
         val file = File(customersDirectory(), "${customer.id}.json")
-        file.writeText(json.encodeToString(CustomerProfile.serializer(), customer))
+        file.writeAtomicText(json.encodeToString(CustomerProfile.serializer(), customer))
         SharedDocumentsArchive.archiveFile(context, file, "Asetukset/Asiakkaat", file.name, "application/json")
     }
 
@@ -88,7 +88,7 @@ class ReportRepository(private val context: Context) {
 
     fun saveSite(site: CustomerSite) {
         val file = File(sitesDirectory(), "${site.id}.json")
-        file.writeText(json.encodeToString(CustomerSite.serializer(), site))
+        file.writeAtomicText(json.encodeToString(CustomerSite.serializer(), site))
         SharedDocumentsArchive.archiveFile(context, file, "Asetukset/Kohteet", file.name, "application/json")
     }
 
@@ -185,7 +185,7 @@ class ReportRepository(private val context: Context) {
             signatureStrokes = emptyList()
         )
         File(templatesDirectory(), template.id + ".json")
-            .writeText(json.encodeToString(InspectionReport.serializer(), template))
+            .writeAtomicText(json.encodeToString(InspectionReport.serializer(), template))
     }
     fun deleteReport(reportId: String) {
         File(reportsDirectory(), "$reportId.json").delete()
@@ -194,7 +194,7 @@ class ReportRepository(private val context: Context) {
 
     fun save(report: InspectionReport) {
         val file = File(reportsDirectory(), "${report.id}.json")
-        file.writeText(json.encodeToString(InspectionReport.serializer(), report))
+        file.writeAtomicText(json.encodeToString(InspectionReport.serializer(), report))
         SharedDocumentsArchive.archiveFile(context, file, "Raportit/Data/Tarkastuspoytakirja", file.name, "application/json")
     }
 
@@ -268,5 +268,17 @@ class ReportRepository(private val context: Context) {
 
     fun deletePhoto(path: String) {
         runCatching { File(path).delete() }
+    }
+}
+
+private fun File.writeAtomicText(value: String) {
+    val atomic = android.util.AtomicFile(this)
+    val stream = atomic.startWrite()
+    try {
+        stream.write(value.toByteArray(Charsets.UTF_8))
+        atomic.finishWrite(stream)
+    } catch (error: Throwable) {
+        atomic.failWrite(stream)
+        throw error
     }
 }

@@ -25,7 +25,7 @@ class ReportRepository(private val context: Context) {
             .getOrDefault(AppSettings())
 
     fun saveSettings(settings: AppSettings) {
-        settingsFile().writeText(json.encodeToString(AppSettings.serializer(), settings))
+        settingsFile().writeAtomicText(json.encodeToString(AppSettings.serializer(), settings))
         SharedDocumentsArchive.archiveText(context, json.encodeToString(AppSettings.serializer(), settings), "Asetukset", "app_settings.json")
         File(settings.logoPath).takeIf { it.isFile }?.let { logo ->
             SharedDocumentsArchive.archiveFile(context, logo, "Asetukset", logo.name)
@@ -50,7 +50,7 @@ class ReportRepository(private val context: Context) {
         require(inspector.name.isNotBlank()) { "Inspector name is required" }
         require(inspector.id.matches(Regex("[a-zA-Z0-9-]{1,64}")))
         val file = File(inspectorsDirectory(), "${inspector.id}.json")
-        file.writeText(json.encodeToString(InspectorProfile.serializer(), inspector))
+        file.writeAtomicText(json.encodeToString(InspectorProfile.serializer(), inspector))
         SharedDocumentsArchive.archiveFile(context, file, "Asetukset/Tarkastajat", file.name, "application/json")
         File(inspector.signatureImagePath).takeIf { it.isFile }?.let { signature ->
             SharedDocumentsArchive.archiveFile(context, signature, "Asetukset/Tarkastajat/Allekirjoitukset", signature.name)
@@ -75,7 +75,7 @@ class ReportRepository(private val context: Context) {
 
     fun saveCustomer(customer: CustomerProfile) {
         val file = File(customersDirectory(), "${customer.id}.json")
-        file.writeText(json.encodeToString(CustomerProfile.serializer(), customer))
+        file.writeAtomicText(json.encodeToString(CustomerProfile.serializer(), customer))
         SharedDocumentsArchive.archiveFile(context, file, "Asetukset/Asiakkaat", file.name, "application/json")
     }
 
@@ -98,7 +98,7 @@ class ReportRepository(private val context: Context) {
 
     fun saveSite(site: CustomerSite) {
         val file = File(sitesDirectory(), "${site.id}.json")
-        file.writeText(json.encodeToString(CustomerSite.serializer(), site))
+        file.writeAtomicText(json.encodeToString(CustomerSite.serializer(), site))
         SharedDocumentsArchive.archiveFile(context, file, "Asetukset/Kohteet", file.name, "application/json")
     }
 
@@ -148,4 +148,16 @@ class ReportRepository(private val context: Context) {
         }.getOrNull()
     }
 
+}
+
+private fun File.writeAtomicText(value: String) {
+    val atomic = android.util.AtomicFile(this)
+    val stream = atomic.startWrite()
+    try {
+        stream.write(value.toByteArray(Charsets.UTF_8))
+        atomic.finishWrite(stream)
+    } catch (error: Throwable) {
+        atomic.failWrite(stream)
+        throw error
+    }
 }
