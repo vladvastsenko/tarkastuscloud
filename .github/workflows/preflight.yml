@@ -1,4 +1,4 @@
-name: Pro preflight (no APK)
+name: Cloud Firebase preflight (no APK)
 on:
   workflow_dispatch:
 permissions:
