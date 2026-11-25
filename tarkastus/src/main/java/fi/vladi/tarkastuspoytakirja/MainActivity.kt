@@ -76,6 +76,7 @@ import fi.vladi.tarkastuspoytakirja.model.CustomReportField
 import fi.vladi.tarkastuspoytakirja.model.InspectionObservation
 import fi.vladi.tarkastuspoytakirja.model.InspectorProfile
 import fi.vladi.tarkastuspoytakirja.model.ReportTypes
+import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
 import fi.vladi.tarkastuspoytakirja.model.InspectionReport
 import fi.vladi.tarkastuspoytakirja.model.ReportPhoto
 import fi.vladi.tarkastuspoytakirja.pdf.ReportPdfGenerator
@@ -645,6 +646,11 @@ private fun EditorScreen(
                             if (it.id == observation.id) it.copy(recommendedAction = value) else it
                         }))
                     }
+                    ObservationFollowUp(observation, AppLanguage.selected(pdfContext)) { updated ->
+                        onChange(report.copy(observations = report.observations.map {
+                            if (it.id == updated.id) updated else it
+                        }))
+                    }
                     observation.photos.forEach { photo ->
                         PhotoCard(
                             photo = photo,
@@ -1013,6 +1019,44 @@ private fun DateField(
             dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.ui_cancel)) } }
         ) {
             androidx.compose.material3.DatePicker(state = pickerState)
+        }
+    }
+}
+
+@Composable
+private fun ObservationFollowUp(observation: InspectionObservation, language: String, onChange: (InspectionObservation) -> Unit) {
+    var expanded by remember(observation.id) { mutableStateOf(
+        listOf(observation.status, observation.priority, observation.responsiblePerson,
+            observation.remediationDeadline, observation.reinspectionDate).any { it.isNotBlank() }
+    ) }
+    TextButton(onClick = { expanded = !expanded }) {
+        Text(FollowUpLabels.text("details", language) + if (expanded) " ▴" else " ▾")
+    }
+    if (expanded) {
+        FollowUpChoice("status", observation.status, FollowUpLabels.statuses, language) { onChange(observation.copy(status = it)) }
+        FollowUpChoice("priority", observation.priority, FollowUpLabels.priorities, language) { onChange(observation.copy(priority = it)) }
+        Field(FollowUpLabels.text("responsible", language), observation.responsiblePerson) { onChange(observation.copy(responsiblePerson = it)) }
+        DateField(FollowUpLabels.text("due", language), observation.remediationDeadline) { onChange(observation.copy(remediationDeadline = it)) }
+        if (observation.remediationDeadline.isNotBlank()) TextButton(onClick = { onChange(observation.copy(remediationDeadline = "")) }) { Text(FollowUpLabels.text("clear", language)) }
+        DateField(FollowUpLabels.text("recheck", language), observation.reinspectionDate) { onChange(observation.copy(reinspectionDate = it)) }
+        if (observation.reinspectionDate.isNotBlank()) TextButton(onClick = { onChange(observation.copy(reinspectionDate = "")) }) { Text(FollowUpLabels.text("clear", language)) }
+    }
+}
+
+@Composable
+private fun FollowUpChoice(label: String, value: String, options: List<String>, language: String, onChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(FollowUpLabels.text(label, language) + ": " + FollowUpLabels.text(value.ifBlank { "none" }, language) + " ▾")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(text = { Text(FollowUpLabels.text(option.ifBlank { "none" }, language)) }, onClick = {
+                    expanded = false
+                    onChange(option)
+                })
+            }
         }
     }
 }

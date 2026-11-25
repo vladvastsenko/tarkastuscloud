@@ -1,5 +1,7 @@
 package fi.vladi.tarkastuspoytakirja.pdf
 
+import fi.vladi.tarkastuspoytakirja.model.FollowUpLabels
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -246,6 +248,11 @@ object ReportPdfGenerator {
             highlightedField("Tila / sijainti", observation.location)
             field("Kuvaus / tilanne", observation.description)
             field("Toimenpiteet / lisätiedot", observation.recommendedAction)
+            labeledField(FollowUpLabels.text("status", language), FollowUpLabels.value(observation.status, language))
+            labeledField(FollowUpLabels.text("priority", language), FollowUpLabels.value(observation.priority, language))
+            labeledField(FollowUpLabels.text("responsible", language), observation.responsiblePerson)
+            labeledField(FollowUpLabels.text("due", language), FollowUpLabels.date(observation.remediationDeadline))
+            labeledField(FollowUpLabels.text("recheck", language), FollowUpLabels.date(observation.reinspectionDate))
             if (observation.photos.isNotEmpty()) {
                 // Keep a clear three-line separation between the location/details and photos.
                 spacer(42f)

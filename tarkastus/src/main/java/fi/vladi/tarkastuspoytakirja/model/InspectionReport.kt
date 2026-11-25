@@ -58,7 +58,12 @@ data class InspectionObservation(
     val location: String = "",
     val description: String = "",
     val recommendedAction: String = "",
-    val photos: List<ReportPhoto> = emptyList()
+    val photos: List<ReportPhoto> = emptyList(),
+    val status: String = "",
+    val priority: String = "",
+    val responsiblePerson: String = "",
+    val remediationDeadline: String = "",
+    val reinspectionDate: String = ""
 )
 
 @Serializable
