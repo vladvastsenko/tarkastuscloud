@@ -115,21 +115,10 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             Text("Tarkastus Pro", style = MaterialTheme.typography.headlineSmall)
             Box {
                 OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(when (AppLanguage.selected(context)) {
-                        "en" -> "English"
-                        "fi" -> "Suomi"
-                        "sv" -> "Svenska"
-                        "nb" -> "Norsk"
-                        "da" -> "Dansk"
-                        "et" -> "Eesti"
-                        "lv" -> "Latviešu"
-                        "lt" -> "Lietuvių"
-                        "ru" -> "Русский"
-                        else -> "English"
-                    } + " ▾")
+                    Text(AppLanguage.label(AppLanguage.selected(context)) + " ▾")
                 }
                 DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
-                    listOf("en" to "English", "fi" to "Suomi", "sv" to "Svenska", "nb" to "Norsk", "da" to "Dansk", "et" to "Eesti", "lv" to "Latviešu", "lt" to "Lietuvių", "ru" to "Русский").forEach { (code, label) ->
+                    AppLanguage.options.forEach { (code, label) ->
                         DropdownMenuItem(text = { Text(label) }, onClick = {
                             languageMenu = false
                             if (AppLanguage.selected(context) != code) {

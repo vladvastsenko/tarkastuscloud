@@ -113,11 +113,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
 @Composable
 private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
-    val languages = listOf(
-        "en" to "English", "fi" to "Suomi", "sv" to "Svenska",
-        "nb" to "Norsk", "da" to "Dansk", "et" to "Eesti",
-        "lv" to "Latviešu", "lt" to "Lietuvių", "ru" to "Русский"
-    )
+    val languages = AppLanguage.options
     var selected by remember { mutableStateOf("en") }
     var expanded by remember { mutableStateOf(false) }
     androidx.compose.foundation.layout.BoxWithConstraints(
@@ -300,16 +296,14 @@ private fun ManagementScreen(
         Text(stringResource(R.string.language), fontWeight = FontWeight.Bold)
         Box {
             OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(when (AppLanguage.selected(context)) { "ru" -> "Русский"; "sv" -> "Svenska"; "en" -> "English"; "et" -> "Eesti"; "lt" -> "Lietuvių"; "lv" -> "Latviešu"; "nb" -> "Norsk"; "da" -> "Dansk"; else -> "Suomi" } + " ▾")
+                Text(AppLanguage.label(AppLanguage.selected(context)) + " ▾")
             }
             DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
-                listOf("en" to "English", "fi" to "Suomi", "sv" to "Svenska", "nb" to "Norsk", "da" to "Dansk", "et" to "Eesti", "lv" to "Latviešu", "lt" to "Lietuvių", "ru" to "Русский").forEach { (code, label) ->
+                AppLanguage.options.forEach { (code, label) ->
                     DropdownMenuItem(text = { Text(label) }, onClick = {
                         languageMenu = false
                         if (AppLanguage.selected(context) != code) {
                             AppLanguage.save(context, code)
-                            context.getSharedPreferences("tarkastus_pdf_language", android.content.Context.MODE_PRIVATE)
-                                .edit().putString("default", code).apply()
                             (context as? android.app.Activity)?.recreate()
                         }
                     })
@@ -317,9 +311,7 @@ private fun ManagementScreen(
             }
         }
         Text(stringResource(R.string.pdf_language_default), fontWeight = FontWeight.Bold)
-        Text(when (AppLanguage.selected(context)) {
-            "ru" -> "Русский"; "sv" -> "Svenska"; "en" -> "English"; "et" -> "Eesti"; "lt" -> "Lietuvių"; "lv" -> "Latviešu"; "nb" -> "Norsk"; "da" -> "Dansk"; else -> "Suomi"
-        })
+        Text(AppLanguage.label(AppLanguage.selected(context)))
         if (!guestMode) BiometricSettingsControl()
         Button(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.shared_settings))
