@@ -1,7 +1,5 @@
 name: Tarkastus Cloud Preview APK
 on:
-  push:
-    branches: [main, rename-staging]
   workflow_dispatch:
 permissions:
   contents: read
