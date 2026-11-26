@@ -105,7 +105,14 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             registrationBilling = billing
             billing.connect { result ->
                 billingReady = result.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK
-                if (billingReady) billing.queryPurchases { _, purchases -> accept(purchases) }
+                if (billingReady) {
+                    billingReady = false
+                    billing.queryPurchases { query, purchases ->
+                        billingReady = query.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK
+                        if (billingReady) accept(purchases)
+                        else error = context.getString(R.string.auth_failed)
+                    }
+                } else error = context.getString(R.string.auth_failed)
             }
             onDispose { billing.close(); registrationBilling = null; billingReady = false; paidPurchase = null; pendingPurchase = false }
         } else onDispose {}
@@ -223,7 +230,12 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     error = context.getString(R.string.password_short)
                 } else {
                     if (register && pendingPurchase && paidPurchase == null) {
-                        registrationBilling?.queryPurchases { _, purchases ->
+                        registrationBilling?.queryPurchases { query, purchases ->
+                            if (query.responseCode != com.android.billingclient.api.BillingClient.BillingResponseCode.OK) {
+                                busy = false
+                                error = context.getString(R.string.auth_failed)
+                                return@queryPurchases
+                            }
                             paidPurchase = purchases.firstOrNull {
                                 it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PURCHASED &&
                                 !it.isSuspended && PREMIUM_PRODUCT in it.products &&
@@ -244,8 +256,8 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         if (!billingReady || billing == null || activity == null) {
                             busy = false
                             error = context.getString(R.string.auth_failed)
-                        } else billing.queryOffer { _, details, offer ->
-                            if (details == null || offer == null ||
+                        } else billing.queryOffer { query, details, offer ->
+                            if (query.responseCode != com.android.billingclient.api.BillingClient.BillingResponseCode.OK || details == null || offer == null ||
                                 registrationPurchase.launch(billing, activity, details, offer).responseCode != com.android.billingclient.api.BillingClient.BillingResponseCode.OK) {
                                 busy = false
                                 error = context.getString(R.string.auth_failed)
