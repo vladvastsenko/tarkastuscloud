@@ -27,6 +27,9 @@ internal class CustomStore(context: Context) {
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val records = File(root,"records").apply { mkdirs() }
+    private val session = AtomicFile(File(root, "active-editor"))
+    fun activeEditor(): String? = synchronized(lock) { try { session.readFully().decodeToString().takeIf { it.isNotBlank() } } catch (_: java.io.FileNotFoundException) { null } }
+    fun rememberEditor(value: String) = synchronized(lock) { write(session, value.encodeToByteArray()) }
     private val marker = AtomicFile(File(records,"ready"))
     private fun readLegacy(): CustomLibrary = try {
         json.decodeFromString<CustomLibrary>(file.readFully().decodeToString())
@@ -78,17 +81,20 @@ internal class CustomStore(context: Context) {
     }
     fun importImage(context: Context, uri: android.net.Uri): String {
         val target = File(root, customId() + ".image")
-        try { context.contentResolver.openInputStream(uri)?.use { input -> target.outputStream().use { val buffer = ByteArray(8192); var total = 0L; while (true) { val n = input.read(buffer); if (n < 0) break; total += n; require(total <= 50L * 1024 * 1024); it.write(buffer,0,n) } } } ?: error("Cannot read image") }
-        catch (e: Exception) { target.delete(); throw e }
+        val staging = File(root, target.name + ".pending")
+        try { context.contentResolver.openInputStream(uri)?.use { input -> staging.outputStream().use { val buffer = ByteArray(8192); var total = 0L; while (true) { val n = input.read(buffer); if (n < 0) break; total += n; require(total <= 50L * 1024 * 1024); it.write(buffer,0,n) }; it.fd.sync() } } ?: error("Cannot read image") }
+        catch (e: Exception) { staging.delete(); throw e }
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        android.graphics.BitmapFactory.decodeFile(target.path,bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) { target.delete(); error("Invalid image") }
+        android.graphics.BitmapFactory.decodeFile(staging.path,bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) { staging.delete(); error("Invalid image") }
+        if (!staging.renameTo(target)) { staging.delete(); error("Cannot publish image") }
         return target.name
     }
     fun saveBitmap(bitmap: android.graphics.Bitmap): String {
         val target = File(root, customId() + ".png")
-        try { target.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) } }
-        catch (e: Exception) { target.delete(); throw e }
+        val staging = File(root, target.name + ".pending")
+        try { staging.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)); it.fd.sync() }; check(staging.renameTo(target)) }
+        catch (e: Exception) { staging.delete(); throw e }
         return target.name
     }
     fun image(name: String): File {

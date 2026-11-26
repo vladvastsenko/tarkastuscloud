@@ -26,18 +26,18 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val l = customLabels(AppLanguage.selected(context))
     val store = remember { CustomStore(context.applicationContext) }
-    val loadedState by produceState<Result<CustomLibrary>?>(null, store) {
+    val loadedState by produceState<Result<Pair<CustomLibrary, String?>>?>(null, store) {
         activeCustomWorker?.join()
-        value = withContext(Dispatchers.IO) { runCatching { store.load() } }
+        value = withContext(Dispatchers.IO) { runCatching { store.load() to store.activeEditor() } }
     }
     val loaded = loadedState
     if (loaded == null) {
         Column(Modifier.fillMaxSize().padding(16.dp)) { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         return
     }
-    var library by remember { mutableStateOf(loaded.getOrDefault(CustomLibrary())) }
-    var template by remember { mutableStateOf<CustomTemplate?>(null) }
-    var document by remember { mutableStateOf<CustomDocument?>(null) }
+    var library by remember { mutableStateOf(loaded.getOrNull()?.first ?: CustomLibrary()) }
+    var template by remember { mutableStateOf(library.templates.firstOrNull { "t:" + it.id == loaded.getOrNull()?.second }) }
+    var document by remember { mutableStateOf(library.documents.firstOrNull { "d:" + it.id == loaded.getOrNull()?.second }) }
     var message by remember { mutableStateOf(if (loaded.isFailure) l[24] else "") }
     val scope = rememberCoroutineScope()
     val writer = remember { kotlinx.coroutines.sync.Mutex() }
@@ -74,20 +74,20 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         enqueue({ store.save(next) }) { message = l[23] }
     }
     LaunchedEffect(Unit) {
-        if (loaded.isSuccess) withContext(Dispatchers.IO) { runCatching { store.cleanUnused(loaded.getOrThrow()) } }
+        if (loaded.isSuccess) withContext(Dispatchers.IO) { runCatching { store.cleanUnused(loaded.getOrThrow().first) } }
     }
     // Persist each committed editor change atomically. Do not overwrite unreadable libraries.
     fun updateDocument(next: CustomDocument) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(documents = library.documents.filterNot { it.id == next.id } + next)
         library = updated; document = next
-        enqueue({ store.saveDocument(next) }, key = "document:" + next.id)
+        enqueue({ store.saveDocument(next); store.rememberEditor("d:" + next.id) }, key = "document:" + next.id)
     }
     fun updateTemplate(next: CustomTemplate) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(templates = library.templates.filterNot { it.id == next.id } + next)
         library = updated; template = next
-        enqueue({ store.saveTemplate(next) }, key = "template:" + next.id)
+        enqueue({ store.saveTemplate(next); store.rememberEditor("t:" + next.id) }, key = "template:" + next.id)
     }
     var busy by remember { mutableStateOf(false) }
     fun back() {
@@ -97,12 +97,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (d != null) {
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
-            enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { if (document == d) { library = next; document = null } }
+            enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { if (document == d) { library = next; document = null; enqueue({ store.rememberEditor("") }) } }
         } else if (t != null) {
-            if (t.title.isBlank()) { template = null; return }
+            if (t.title.isBlank()) { template = null; enqueue({ store.rememberEditor("") }); return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
-            enqueue({ store.saveTemplate(t) }, key = "template:" + t.id) { if (template == t) { library = next; template = null } }
+            enqueue({ store.saveTemplate(t) }, key = "template:" + t.id) { if (template == t) { library = next; template = null; enqueue({ store.rememberEditor("") }) } }
         } else onBack()
     }
     BackHandler { back() }
@@ -172,9 +172,9 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Button(onClick = { updateTemplate(CustomTemplate()) }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
-            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) } } }
+            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { updateTemplate(item) }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) } } }
             Text(l[3], style = MaterialTheme.typography.titleMedium)
-            for (item in library.documents) OutlinedButton(onClick = { document = item }) { Text(item.template.title) }
+            for (item in library.documents) OutlinedButton(onClick = { updateDocument(item) }) { Text(item.template.title) }
         }
     }
 }
