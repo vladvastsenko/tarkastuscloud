@@ -63,7 +63,17 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     var register by remember { mutableStateOf(false) }
     var showPremiumTerms by remember { mutableStateOf(false) }
     var simulatedCheckout by remember { mutableStateOf(false) }
-    var googleRegistrationIdentity by remember { mutableStateOf<String?>(null) }
+    var googleRegistrationIdentity by remember {
+        mutableStateOf(guestPrefs.getString("pending_google_subject", null))
+    }
+    fun clearGoogleRegistration() {
+        googleRegistrationIdentity = null
+        guestPrefs.edit().remove("pending_google_subject").apply()
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (!signedIn && !guest && googleRegistrationIdentity != null &&
+            BuildConfig.PREMIUM_CHECKOUT_ENABLED) register = true
+    }
     var message by remember { mutableStateOf<String?>(null) }
     val declineCheckout: () -> Unit = {
         auth.signOut()
@@ -148,7 +158,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                             } else auth.signInWithCustomToken(customToken).addOnCompleteListener { task ->
                                 busy = false
                                 if (task.isSuccessful) {
-                                    googleRegistrationIdentity = null
+                                    clearGoogleRegistration()
                                     register = false
                                     guest = false
                                     guestPrefs.edit().putBoolean("enabled", false).apply()
@@ -162,6 +172,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                             val customToken = data?.get("customToken") as? String
                             if (data?.get("registrationRequired") == true) {
                                 googleRegistrationIdentity = account.id ?: throw IllegalStateException("Missing Google identity")
+                                check(guestPrefs.edit().putString("pending_google_subject", googleRegistrationIdentity).commit())
                                 busy = false
                                 showPremiumTerms = true
                             } else if (customToken != null) {
@@ -207,8 +218,8 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     }
     if (showPremiumTerms && !signedIn && !guest) {
         PremiumRegistrationScreen(onContinue = { showPremiumTerms = false; if (developerGoogle) simulatedCheckout = true else register = true },
-            onBack = { showPremiumTerms = false; googleRegistrationIdentity = null },
-            onFree = { showPremiumTerms = false; googleRegistrationIdentity = null; guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
+            onBack = { showPremiumTerms = false; clearGoogleRegistration() },
+            onFree = { showPremiumTerms = false; clearGoogleRegistration(); guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
         return
     }
     if (simulatedCheckout && developerGoogle && !signedIn && !guest) {
@@ -253,6 +264,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             Text("Tarkastus Cloud", style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.guest_explanation), style = MaterialTheme.typography.bodyMedium)
             Button(onClick = {
+                clearGoogleRegistration()
                 guestPrefs.edit().putBoolean("enabled", true).apply()
                 guest = true
             }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC8E6C9), contentColor = Color(0xFF173D20)), modifier = Modifier.fillMaxWidth()) {
@@ -373,7 +385,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 }
             }, enabled = !busy && (!register || billingReady), modifier = Modifier.fillMaxWidth()) { Text(if (register) stringResource(R.string.create_account) else stringResource(R.string.email_sign_in)) }
             // Separate rows prevent long translations from clipping the password-reset action.
-            OutlinedButton(onClick = { if (register) { register = false; googleRegistrationIdentity = null } else showPremiumTerms = true; error = null }, enabled = !busy,
+            OutlinedButton(onClick = { if (register) { register = false; clearGoogleRegistration() } else showPremiumTerms = true; error = null }, enabled = !busy,
                 modifier = Modifier.fillMaxWidth()) {
                 Text(if (register) stringResource(R.string.already_registered) else stringResource(R.string.new_user))
             }
