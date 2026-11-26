@@ -79,14 +79,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     // Persist each committed editor change atomically. Do not overwrite unreadable libraries.
     fun updateDocument(next: CustomDocument) {
         if (loaded.isFailure) { message = l[24]; return }
-        val updated = library.copy(documents = library.documents.filterNot { it.id == next.id } + next)
-        library = updated; document = next
+        document = next
         enqueue({ store.saveDocument(next); store.rememberEditor("d:" + next.id) }, key = "document:" + next.id)
     }
     fun updateTemplate(next: CustomTemplate) {
         if (loaded.isFailure) { message = l[24]; return }
-        val updated = library.copy(templates = library.templates.filterNot { it.id == next.id } + next)
-        library = updated; template = next
+        template = next
         enqueue({ store.saveTemplate(next); store.rememberEditor("t:" + next.id) }, key = "template:" + next.id)
     }
     var busy by remember { mutableStateOf(false) }
@@ -100,7 +98,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
             enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { if (document == d) { library = next; document = null; enqueue({ store.rememberEditor("") }) } }
         } else if (t != null) {
-            if (t.title.isBlank()) { template = null; enqueue({ store.rememberEditor("") }); return }
+            if (t.title.isBlank()) { library = library.copy(templates = library.templates.filterNot { it.id == t.id } + t); template = null; enqueue({ store.rememberEditor("") }); return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
             enqueue({ store.saveTemplate(t) }, key = "template:" + t.id) { if (template == t) { library = next; template = null; enqueue({ store.rememberEditor("") }) } }
@@ -130,7 +128,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             fun valid(): Boolean = d.template.sections.flatMap { it.fields }.all { f ->
                 !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
-            Button(onClick = { enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { message = l[23] } }) { Text(l[14]) }
+            Button(onClick = { enqueue({ store.saveDocument(d); store.rememberEditor("d:" + d.id) }, key = "document:" + d.id) { message = l[23] } }) { Text(l[14]) }
             Button(enabled = !busy && imports == 0 && pendingWrites == 0 && failedKeys.isEmpty(), onClick = {
                 if (!valid()) message = l[22] else {
                     busy = true
@@ -168,7 +166,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             }
             OutlinedButton(onClick = { updateTemplate(t.copy(sections = t.sections + CustomSection())) }) { Text(l[6]) }
             Button(onClick = { persist(library.copy(templates = library.templates.filterNot { it.id == t.id } + t)) }, enabled = t.title.isNotBlank()) { Text(l[12]) }
-            Button(onClick = { template = null; updateDocument(CustomDocument(template = t, pdfLanguage = AppLanguage.selected(context))) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
+            Button(onClick = { library = library.copy(templates = library.templates.filterNot { it.id == t.id } + t); template = null; updateDocument(CustomDocument(template = t, pdfLanguage = AppLanguage.selected(context))) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
         } else {
             Button(onClick = { updateTemplate(CustomTemplate()) }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })

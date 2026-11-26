@@ -21,9 +21,10 @@ internal data class CustomTemplate(val id: String = customId(), val title: Strin
 internal data class CustomDocument(val id: String = customId(), val template: CustomTemplate = CustomTemplate(), val values: Map<String,String> = emptyMap(), val attachments: Map<String,List<String>> = emptyMap(), val pdfLanguage: String = "")
 @Serializable
 internal data class CustomLibrary(val templates: List<CustomTemplate> = emptyList(), val documents: List<CustomDocument> = emptyList())
-internal class CustomStore(context: Context) {
+internal class CustomStore(private val root: File) {
+    constructor(context: Context) : this(File(context.filesDir, "custom_reports"))
+    init { root.mkdirs() }
     companion object { private val lock = Any() }
-    private val root = File(context.filesDir, "custom_reports").apply { mkdirs() }
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val records = File(root,"records").apply { mkdirs() }
@@ -38,8 +39,9 @@ internal class CustomStore(context: Context) {
     }
     private fun write(target: AtomicFile, bytes: ByteArray) {
         val out = target.startWrite()
-        try { out.write(bytes); out.fd.sync(); target.finishWrite(out); check(target.readFully().contentEquals(bytes)) { "Record verification failed" } }
+        try { out.write(bytes); out.fd.sync(); target.finishWrite(out) }
         catch (e: Exception) { target.failWrite(out); throw e }
+        check(target.readFully().contentEquals(bytes)) { "Record verification failed" }
     }
     private fun record(kind: String,id: String): AtomicFile {
         val key = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }

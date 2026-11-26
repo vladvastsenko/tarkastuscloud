@@ -158,7 +158,16 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
         }) { Text("📷") }
     }
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
-    images.forEachIndexed { i,name -> key(name) {
+    var page by rememberSaveable { mutableStateOf(0) }
+    val lastPage = ((images.size - 1).coerceAtLeast(0)) / 8
+    val visiblePage = page.coerceIn(0,lastPage)
+    if (images.size > 8) Row {
+        TextButton(enabled = visiblePage > 0, onClick = { page = visiblePage - 1 }) { Text("‹") }
+        Text("${visiblePage + 1} / ${lastPage + 1}")
+        TextButton(enabled = visiblePage < lastPage, onClick = { page = visiblePage + 1 }) { Text("›") }
+    }
+    images.drop(visiblePage * 8).take(8).forEachIndexed { localIndex,name -> key(name) {
+        val i = visiblePage * 8 + localIndex
         CustomPreview(name,store)
         TextButton(enabled = !importing, onClick = { onImages(images.filterIndexed { index,_ -> index != i }) }) { Text(l[17]+" "+(i+1)) }
     } }
