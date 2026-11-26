@@ -158,7 +158,7 @@
     <string name="cloud_restore_error">Błąd przywracania: %1$s</string>
     <string name="cloud_unknown_error">Nieznany błąd</string>
     <string name="guest_continue">Kontynuuj bez rejestracji</string>
-    <string name="guest_explanation">Twórz i zapisuj raporty lokalnie. Synchronizacja w chmurze wymaga logowania.</string>
+    <string name="guest_explanation">Rejestracja jest potrzebna tylko do Premium. Twórz, edytuj i zapisuj raporty lokalnie bezpłatnie i bez konta. Premium zapewnia synchronizację w chmurze i usuwa reklamy.</string>
     <string name="guest_local_notice">Tryb gościa: raporty są zapisywane tylko na tym urządzeniu. Synchronizacja w chmurze wymaga logowania.</string>
     <string name="guest_sign_in">Zaloguj / Zarejestruj się</string>
     <string name="guest_cloud_required">Synchronizacja w chmurze wymaga logowania.</string>
