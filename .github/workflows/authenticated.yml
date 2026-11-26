@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [rename-staging]
+concurrency:
+  group: cloud-authenticated-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
