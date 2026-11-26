@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">PDF peržiūra</string>
     <string name="ui_preview_unavailable">Neįdiegta PDF peržiūros programa</string>
     <string name="guest_continue">Tęsti be registracijos</string>
-    <string name="guest_explanation">Kurkite ir saugokite ataskaitas įrenginyje. Sinchronizacijai debesyje reikia prisijungti.</string>
+    <string name="guest_explanation">Registracija reikalinga tik Premium. Ataskaitas galima nemokamai kurti, redaguoti ir saugoti įrenginyje be paskyros. Premium suteikia debesijos sinchronizavimą ir pašalina reklamas.</string>
     <string name="guest_local_notice">Svečio režimas: ataskaitos saugomos tik šiame įrenginyje. Sinchronizacijai reikia prisijungti.</string>
     <string name="guest_sign_in">Prisijungti / Registruotis</string>
     <string name="guest_cloud_required">Sinchronizacijai debesyje reikia prisijungti.</string>
