@@ -127,6 +127,9 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         }
         if (report.useSharedSettings && settings.headerText.isNotBlank()) line(settings.headerText)
         line(report.template.title,true)
+        if (report.useSharedSettings) {
+            listOf(report.customerText, report.siteText, report.inspectorText.ifBlank { listOf(settings.inspectorName, settings.inspectorCertificateNumber, settings.inspectorPhone, settings.inspectorEmail).filter { it.isNotBlank() }.joinToString("\n") }).filter { it.isNotBlank() }.forEach { line(it) }
+        }
         for (s in report.template.sections) {
             val fields = s.fields.filter { f ->
                 val value = report.values[f.id] ?: f.defaultValue
@@ -155,7 +158,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             }
         }
         finish()
-        val file = File(context.cacheDir,"custom_"+report.id+".pdf")
-        try { file.outputStream().use { pdf.writeTo(it) }; check(SharedDocumentsArchive.archiveFile(context,file,"Raportit/PDF",file.name,"application/pdf") != null) } finally { file.delete() }
+        val file = File.createTempFile("custom_", ".pdf", context.cacheDir)
+        try { file.outputStream().use { pdf.writeTo(it) }; check(SharedDocumentsArchive.archiveFile(context,file,"Raportit/PDF","custom_"+report.id+"_"+java.util.UUID.randomUUID()+".pdf","application/pdf", overwrite = false) != null) } finally { file.delete() }
     } finally { pdf.close() }
 }
