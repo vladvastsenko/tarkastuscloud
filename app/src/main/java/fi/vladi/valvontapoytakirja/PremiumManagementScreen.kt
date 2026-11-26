@@ -45,6 +45,10 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
                     Text(subscriptionLabel(lang, state) + if (controller.simulatedState == state) " ✓" else "")
                 }
             }
+        } else if (isDeveloperTestAccount()) {
+            Text("DEVELOPER · TEST")
+            OutlinedButton(onClick = { controller.setDeveloperFree(true) }, modifier = Modifier.fillMaxWidth()) { Text("Free" + if (!controller.active) " ✓" else "") }
+            OutlinedButton(onClick = { controller.setDeveloperFree(false) }, modifier = Modifier.fillMaxWidth()) { Text("Premium" + if (controller.active) " ✓" else "") }
         } else if (controller.uid == null && !BuildConfig.OFFLINE_PREVIEW) {
             Button(onClick = onSignIn) { Text(stringResource(R.string.guest_sign_in)) }
         } else {
