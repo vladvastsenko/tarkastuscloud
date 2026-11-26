@@ -10,6 +10,16 @@ import kotlinx.coroutines.delay
 
 internal class PremiumController {
     var active by mutableStateOf(false)
+        private set
+    var error by mutableStateOf(false)
+        private set
+    var simulatedState by mutableStateOf(SubscriptionState.FREE)
+        private set
+    fun simulate(state: SubscriptionState) {
+        if (!BuildConfig.DEBUG || !BuildConfig.OFFLINE_PREVIEW) return
+        simulatedState = state
+        active = VerifiedSubscription("preview", state, Long.MAX_VALUE).permitsPremium("preview", 0)
+    }
     var busy by mutableStateOf(false)
     var ready by mutableStateOf(false)
     var details by mutableStateOf<ProductDetails?>(null)
@@ -26,11 +36,12 @@ internal class PremiumController {
         val epoch = ++generation
         val account = uid
         busy = true
+        error = false
         client.queryPurchases { result, purchases ->
             if (epoch != generation) return@queryPurchases
             val purchase = purchases.firstOrNull { it.purchaseState == Purchase.PurchaseState.PURCHASED && it.accountIdentifiers?.obfuscatedAccountId == account?.let(::premiumAccountHash) }
             if (result.responseCode != BillingClient.BillingResponseCode.OK || purchase == null) {
-                busy = false; active = false; return@queryPurchases
+                busy = false; active = false; error = result.responseCode != BillingClient.BillingResponseCode.OK; return@queryPurchases
             }
             val start = SystemClock.elapsedRealtime()
             verifyPremiumPurchase(purchase) { verified ->
@@ -38,6 +49,7 @@ internal class PremiumController {
                     val duration = ((verified?.expiresAt ?: 0L) - System.currentTimeMillis()).coerceIn(0L, 300000L)
                     deadline = start + duration
                     active = verified != null && SystemClock.elapsedRealtime() < deadline
+                    error = verified == null
                     busy = false
                 }
             }
@@ -48,7 +60,7 @@ internal class PremiumController {
         val account = uid ?: return
         val d = details ?: return
         val o = offer ?: return
-        billing?.launchPurchase(activity,d,o,premiumAccountHash(account))
+        error = billing?.launchPurchase(activity,d,o,premiumAccountHash(account))?.responseCode != BillingClient.BillingResponseCode.OK
     }
 }
 

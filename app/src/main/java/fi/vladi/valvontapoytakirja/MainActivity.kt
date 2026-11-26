@@ -196,7 +196,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
             if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
-    } else if (showCloudBackup && premium.active) {
+    } else if (showCloudBackup && premium.active && !BuildConfig.OFFLINE_PREVIEW) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { CloudBackupScreen(onBack = { showCloudBackup = false }) }
             if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()

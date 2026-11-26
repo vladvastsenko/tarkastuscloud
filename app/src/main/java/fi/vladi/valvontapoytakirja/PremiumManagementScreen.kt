@@ -37,7 +37,14 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
         Text(if (controller.active) "Premium" else "Free")
         Text(premiumTerms(lang).first)
         controller.offer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice?.let { Text(it) }
-        if (controller.uid == null && !BuildConfig.OFFLINE_PREVIEW) {
+        if (BuildConfig.DEBUG && BuildConfig.OFFLINE_PREVIEW) {
+            Text("TEST · Free / Premium")
+            SubscriptionState.values().forEach { state ->
+                OutlinedButton(onClick = { controller.simulate(state) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(state.name + if (controller.simulatedState == state) " ✓" else "")
+                }
+            }
+        } else if (controller.uid == null && !BuildConfig.OFFLINE_PREVIEW) {
             Button(onClick = onSignIn) { Text(stringResource(R.string.guest_sign_in)) }
         } else {
             Button(onClick = { (context as? android.app.Activity)?.let(controller::buy) },
@@ -45,6 +52,7 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
             OutlinedButton(onClick = controller::refresh, enabled = controller.ready && !controller.busy) { Text(l[1]) }
         }
         if (controller.busy) Text(l[3])
+        if (controller.error) Text(l[2], color = MaterialTheme.colorScheme.error)
         if (!BuildConfig.PREMIUM_CHECKOUT_ENABLED || !controller.ready) Text(l[2])
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
