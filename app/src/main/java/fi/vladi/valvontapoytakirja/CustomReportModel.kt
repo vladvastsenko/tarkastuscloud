@@ -18,7 +18,7 @@ internal data class CustomSection(val id: String = customId(), val title: String
 @Serializable
 internal data class CustomTemplate(val id: String = customId(), val title: String = "", val sections: List<CustomSection> = listOf(CustomSection()))
 @Serializable
-internal data class CustomDocument(val id: String = customId(), val template: CustomTemplate = CustomTemplate(), val values: Map<String,String> = emptyMap(), val attachments: Map<String,List<String>> = emptyMap(), val pdfLanguage: String = "", val useSharedSettings: Boolean = true)
+internal data class CustomDocument(val id: String = customId(), val template: CustomTemplate = CustomTemplate(), val values: Map<String,String> = emptyMap(), val attachments: Map<String,List<String>> = emptyMap(), val pdfLanguage: String = "", val useSharedSettings: Boolean = true, val customerId: String = "", val customerText: String = "", val siteId: String = "", val siteText: String = "", val inspectorId: String = "", val inspectorText: String = "")
 @Serializable
 internal data class CustomLibrary(val templates: List<CustomTemplate> = emptyList(), val documents: List<CustomDocument> = emptyList())
 internal class CustomStore(private val root: File) {
