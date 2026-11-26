@@ -1,7 +1,5 @@
 name: Tarkastus Cloud Premium server tests
 on:
-  push:
-    branches: [rename-staging]
   workflow_dispatch:
 permissions:
   contents: read
