@@ -76,6 +76,7 @@ fun CloudBackupScreen(onBack: () -> Unit) {
     var showSyncConfirmation by remember { mutableStateOf(false) }
     var showShareGuide by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    androidx.activity.compose.BackHandler { if (!busy) onBack() }
 
     LaunchedEffect(privateBackupUri, folderUri) {
         val savedUri = privateBackupUri
@@ -237,9 +238,8 @@ fun CloudBackupScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     showShareGuide = false
                     val driveIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/drive/my-drive"))
-                    val appIntent = Intent(driveIntent).setPackage("com.google.android.apps.docs")
-                    try { context.startActivity(appIntent) }
-                    catch (_: ActivityNotFoundException) { context.startActivity(driveIntent) }
+                    runCatching { context.startActivity(Intent.createChooser(driveIntent, null)) }
+                        .onFailure { status = context.getString(R.string.cloud_read_error, it.message ?: context.getString(R.string.cloud_unknown_error)) }
                 }) { Text(stringResource(R.string.cloud_share_open_drive)) }
             },
             dismissButton = { TextButton(onClick = { showShareGuide = false }) {
