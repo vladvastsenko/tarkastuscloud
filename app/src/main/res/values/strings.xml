@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Esikatsele PDF</string>
     <string name="ui_preview_unavailable">PDF-katselusovellusta ei löytynyt</string>
     <string name="guest_continue">Jatka ilman rekisteröitymistä</string>
-    <string name="guest_explanation">Voit luoda ja tallentaa raportteja paikallisesti. Pilvisynkronointi vaatii kirjautumisen.</string>
+    <string name="guest_explanation">Rekisteröityminen tarvitaan vain Premiumia varten. Raporttien luonti, muokkaus ja paikallinen tallennus ovat maksuttomia ilman tiliä. Premium lisää pilvisynkronoinnin ja poistaa mainokset.</string>
     <string name="guest_local_notice">Vierastila: raportit tallennetaan vain tälle laitteelle. Pilvisynkronointi vaatii kirjautumisen.</string>
     <string name="guest_sign_in">Kirjaudu sisään / Rekisteröidy</string>
     <string name="guest_cloud_required">Pilvisynkronointi vaatii kirjautumisen.</string>
