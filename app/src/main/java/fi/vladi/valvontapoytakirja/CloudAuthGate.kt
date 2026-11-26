@@ -131,9 +131,13 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             try {
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
-                val token = account.idToken ?: error("Missing Google ID token")
+                val token = account.idToken ?: throw IllegalStateException("Missing Google ID token")
                 val login = if (developerGoogle) {
-                    check(account.email.equals("vlad.vastsenko@gmail.com", ignoreCase = true))
+                    if (!account.email.equals("vlad.vastsenko@gmail.com", ignoreCase = true)) {
+                        busy = false
+                        showPremiumTerms = true
+                        return@rememberLauncherForActivityResult
+                    }
                     auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null))
                 } else FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("signInExistingGoogle")
                     .call(mapOf("idToken" to token))
@@ -150,7 +154,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         signedIn = true
                         error = null
                     } else {
-                        error = localizedAuthError(context, task.exception, R.string.google_failed)
+                        error = localizedAuthError(context, task.exception, R.string.google_failed) + (if (developerGoogle) (task.exception as? FirebaseAuthException)?.errorCode?.let { " ($it)" }.orEmpty() else "")
                     }
                 }
             } catch (exception: Exception) {
@@ -203,7 +207,13 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     else {
                         busy = true
                         error = null
-                        try { launcher.launch(GoogleSignIn.getClient(context, options).signInIntent) }
+                        try {
+                            val client = GoogleSignIn.getClient(context, options)
+                            client.signOut().addOnCompleteListener {
+                                try { launcher.launch(client.signInIntent) }
+                                catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
+                            }
+                        }
                         catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
                     }
                 },
