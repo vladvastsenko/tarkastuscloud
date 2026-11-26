@@ -38,6 +38,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         val d = document
         val t = template
         if (d != null) {
+            CustomPdfLanguage(d.pdfLanguage.ifBlank { AppLanguage.selected(context) }) { language -> document = document?.copy(pdfLanguage = language) }
             Text(d.template.title, style = MaterialTheme.typography.titleLarge)
             for (section in d.template.sections) {
                 Text(section.title, style = MaterialTheme.typography.titleMedium)
@@ -83,6 +84,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Button(onClick = { document = CustomDocument(template = t) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
         } else {
             Button(onClick = { template = CustomTemplate() }) { Text(l[1]) }
+            CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
             for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { document = CustomDocument(template = item) }) { Text(l[13]) }; TextButton(onClick = { template = item.copy(id = customId()) }) { Text(l[18]) } } }
             Text(l[3], style = MaterialTheme.typography.titleMedium)

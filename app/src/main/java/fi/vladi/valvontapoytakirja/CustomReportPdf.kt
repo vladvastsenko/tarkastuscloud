@@ -7,12 +7,17 @@ import fi.vladi.tarkastuspoytakirja.storage.SharedDocumentsArchive
 import java.io.File
 
 internal fun exportCustomPdf(context: Context, store: CustomStore, report: CustomDocument) {
+    val settings = fi.vladi.valvontapoytakirja.data.ReportRepository(context).loadSettings()
+    val labels = customLabels(report.pdfLanguage.ifBlank { fi.vladi.tarkastuspoytakirja.AppLanguage.selected(context) })
     val pdf = PdfDocument()
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 12f }
     var pageNumber = 0
     var page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create())
     var y = 44f
-    fun finish() { paint.textSize = 10f; page.canvas.drawText(pageNumber.toString(), 550f, 815f, paint); pdf.finishPage(page) }
+    fun finish() { paint.typeface = Typeface.DEFAULT; paint.textSize = 9f
+        val footer = settings.footerText.replace("\n"," ")
+        if (footer.isNotBlank()) page.canvas.drawText(footer.take(paint.breakText(footer,true,490f,null)),42f,815f,paint)
+        paint.textSize = 10f; page.canvas.drawText(pageNumber.toString(), 550f, 815f, paint); pdf.finishPage(page) }
     fun newPage() { finish(); page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create()); y = 44f }
     fun space(height: Float) { if (y + height > 790f) newPage() }
     var afterDedicatedPhotos = false
@@ -109,15 +114,27 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         if (f.separatePhotoPages) afterDedicatedPhotos = true
     }
     try {
+        if (settings.logoPath.isNotBlank()) {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(settings.logoPath,bounds)
+            var sample = 1
+            while (bounds.outWidth/sample > 1200 || bounds.outHeight/sample > 1200) sample *= 2
+            BitmapFactory.decodeFile(settings.logoPath,BitmapFactory.Options().apply { inSampleSize = sample })?.let { bitmap ->
+                try { val scale = minOf(180f/bitmap.width,65f/bitmap.height); val w = bitmap.width*scale; val h = bitmap.height*scale
+                    page.canvas.drawBitmap(bitmap,null,RectF(42f,y,42f+w,y+h),paint); y += h+20f
+                } finally { bitmap.recycle() }
+            }
+        }
+        if (settings.headerText.isNotBlank()) line(settings.headerText)
         line(report.template.title,true)
         for (s in report.template.sections) {
             val fields = s.fields.filter { f -> f.kind == CustomKind.HEADING || (report.values[f.id] ?: f.defaultValue).isNotBlank() || !report.attachments[f.id].isNullOrEmpty() }
             if (fields.isEmpty()) continue
             if (s.title.isNotBlank()) line(s.title,true)
             for (f in fields) {
-                line(f.label,true)
+                line(f.label.ifBlank { labels[25+f.kind.ordinal] },true)
                 val value = report.values[f.id] ?: f.defaultValue
-                if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(value)
+                if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(if (f.kind == CustomKind.CHECKBOX) (if (value == "true") "☑" else "☐") else value)
                 if (f.kind == CustomKind.PHOTOS) {
                     photoGrid(f,report.attachments[f.id].orEmpty())
                     continue
