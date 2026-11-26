@@ -128,7 +128,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
             enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { if (document == d) { library = next; document = null; enqueue({ store.rememberEditor("") }) } }
         } else if (t != null) {
-            if (t.title.isBlank()) { library = library.copy(templates = library.templates.filterNot { it.id == t.id } + t); template = null; enqueue({ store.rememberEditor("") }); return }
+            if (t.title.isBlank()) { enqueue({ store.deleteTemplate(t.id); store.rememberEditor("") }) { library = library.copy(templates = library.templates.filterNot { it.id == t.id }); template = null }; return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
             enqueue({ store.saveTemplate(t) }, key = "template:" + t.id) { if (template == t) { library = next; template = null; enqueue({ store.rememberEditor("") }) } }
@@ -226,7 +226,8 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                             if (f.kind in listOf(CustomKind.SINGLE,CustomKind.MULTIPLE,CustomKind.TABLE)) OutlinedTextField(f.options.joinToString("\n"), { change(f.copy(options = it.split("\n"))) }, label = { Text(l[10]) })
                             if (f.kind !in listOf(CustomKind.PHOTOS,CustomKind.SIGNATURE,CustomKind.TABLE)) OutlinedTextField(f.defaultValue,{ change(f.copy(defaultValue = it)) },label = { Text(l[11]) })
                         }
-                        Row { TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,-1))) }) { Text("↑") }; TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,1))) }) { Text("↓") }; TextButton(onClick = { update(section.copy(fields = section.fields + f.copy(id = customId()))) }) { Text(l[18]) }; TextButton(onClick = { update(section.copy(fields = section.fields.filterNot { it.id == f.id })) }) { Text(l[17]) } }
+                        Row { TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,-1))) }) { Text("↑") }; TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,1))) }) { Text("↓") }; }
+                        Row { TextButton(onClick = { update(section.copy(fields = section.fields + f.copy(id = customId()))) }) { Text(l[18]) }; TextButton(onClick = { update(section.copy(fields = section.fields.filterNot { it.id == f.id })) }) { Text(l[17]) } }
                         HorizontalDivider()
                     }
                     OutlinedButton(onClick = { update(section.copy(fields = section.fields + CustomField())) }) { Text(l[7]) }
@@ -239,9 +240,32 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Button(onClick = { updateTemplate(CustomTemplate()) }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
-            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { updateTemplate(item) }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) }; TextButton(enabled = pendingWrites == 0 && !busy && loaded.isSuccess, onClick = { deletion = true to item.id }) { Text(l[17]) } } }
+            val editLabel = when (language.substringBefore("-")) {
+                "ru" -> "Редактировать"; "fi" -> "Muokkaa"; "sv" -> "Redigera"; "nb" -> "Rediger"; "da" -> "Rediger"; "et" -> "Muuda"; "lv" -> "Rediģēt"; "lt" -> "Redaguoti"; "fr" -> "Modifier"; "es" -> "Editar"; "it" -> "Modifica"; "de" -> "Bearbeiten"; "pl" -> "Edytuj"; else -> "Edit"
+            }
+            val ready = pendingWrites == 0 && !busy && loaded.isSuccess
+            for (item in library.templates) key(item.id) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.title.ifBlank { l[4] }, style = MaterialTheme.typography.titleMedium)
+                        OutlinedButton(enabled = ready, onClick = { updateTemplate(item) }, modifier = Modifier.fillMaxWidth()) { Text(editLabel) }
+                        OutlinedButton(enabled = ready && item.title.isNotBlank(), onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }, modifier = Modifier.fillMaxWidth()) { Text(l[13]) }
+                        Row {
+                            TextButton(enabled = ready && item.title.isNotBlank(), onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) }
+                            TextButton(enabled = ready, onClick = { deletion = true to item.id }) { Text(l[17], color = MaterialTheme.colorScheme.error) }
+                        }
+                    }
+                }
+            }
             Text(l[3], style = MaterialTheme.typography.titleMedium)
-            for (item in library.documents) Row { OutlinedButton(onClick = { updateDocument(item) }) { Text(item.template.title) }; TextButton(enabled = pendingWrites == 0 && !busy && loaded.isSuccess, onClick = { deletion = false to item.id }) { Text(l[17]) } }
+            for (item in library.documents) key(item.id) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        OutlinedButton(enabled = ready, onClick = { updateDocument(item) }, modifier = Modifier.fillMaxWidth()) { Text(item.template.title.ifBlank { l[4] }) }
+                        TextButton(enabled = ready, onClick = { deletion = false to item.id }) { Text(l[17], color = MaterialTheme.colorScheme.error) }
+                    }
+                }
+            }
         }
     }
 }
