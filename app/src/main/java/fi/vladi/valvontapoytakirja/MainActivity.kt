@@ -174,8 +174,11 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     var showManagement by remember { mutableStateOf(false) }
     var showCloudBackup by remember { mutableStateOf(false) }
     var showUserGuide by remember { mutableStateOf(false) }
+    var showCustomReport by remember { mutableStateOf(false) }
 
-    if (showUserGuide) {
+    if (showCustomReport) {
+        CustomReportScreen(onBack = { showCustomReport = false })
+    } else if (showUserGuide) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
             if ((consent?.canRequestAds == true)) TestAdMobBanner()
@@ -208,6 +211,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             onTarkastus = {
                 context.startActivity(Intent(context, TarkastusMainActivity::class.java))
             },
+            onCustomReport = { showCustomReport = true },
             onManagement = { showManagement = true },
             showAds = (consent?.canRequestAds == true)
         )
@@ -217,6 +221,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
 @Composable
 private fun UnifiedStartScreen(
     onTarkastus: () -> Unit,
+    onCustomReport: () -> Unit,
     onManagement: () -> Unit,
     showAds: Boolean
 ) {
@@ -242,6 +247,9 @@ private fun UnifiedStartScreen(
         Text(stringResource(R.string.choose_report))
         Button(onClick = onTarkastus, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.report_tarkastus))
+        }
+        Button(onClick = onCustomReport, modifier = Modifier.fillMaxWidth()) {
+            Text(customLabels(AppLanguage.selected(LocalContext.current))[0])
         }
         Spacer(modifier = Modifier.weight(1f))
         if (showAds) TestAdMobBanner()
