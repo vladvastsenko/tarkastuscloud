@@ -52,3 +52,38 @@ const {beforeUserCreated} = require("firebase-functions/v2/identity");
 exports.blockDirectRegistration = beforeUserCreated({region:"europe-west1"}, () => {
   throw new HttpsError("permission-denied","Registration requires a verified purchase");
 });
+
+const {getAuth} = require("firebase-admin/auth");
+const {reserveAccount,assertPurchase} = require("./registration");
+exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInstances:5,enforceAppCheck:true}, async request => {
+  const {purchaseToken,session,permit,email,password} = request.data || {};
+  if (typeof purchaseToken !== "string" || purchaseToken.length < 8 || purchaseToken.length > 4096 ||
+      typeof email !== "string" || email.length > 254 || !email.includes("@") ||
+      typeof password !== "string" || password.length < 8 || password.length > 128 ||
+      typeof permit !== "string" || !/^[a-f0-9]{64}$/.test(permit))
+    throw new HttpsError("invalid-argument","Invalid registration request");
+  try {
+    const db = getFirestore();
+    const client = await auth.getClient();
+    const {data} = await client.request({url:base+"/subscriptionsv2/tokens/"+encodeURIComponent(purchaseToken),timeout:15000});
+    assertPurchase(data,session);
+    const p = (await db.collection("premiumRegistrationPermits").doc(hash(permit)).get()).data();
+    if (!p || p.claimId !== hash(purchaseToken)) throw new Error("purchase mismatch");
+    const address = email.trim().toLowerCase();
+    const uid = await reserveAccount(db,permit,session,address);
+    const admin = getAuth();
+    try {
+      await admin.createUser({uid,email:address,password,emailVerified:false});
+    } catch (e) {
+      if (e.code !== "auth/uid-already-exists" && e.code !== "auth/email-already-exists") throw e;
+      const existing = await admin.getUser(uid);
+      if (existing.email?.toLowerCase() !== address) throw new Error("account mismatch");
+    }
+    if (data.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
+      await client.request({method:"POST",url:base+"/subscriptions/"+product+"/tokens/"+encodeURIComponent(purchaseToken)+":acknowledge",data:{},timeout:15000});
+    } else if (data.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") throw new Error("unknown acknowledgement");
+    return {created:true};
+  } catch (_) {
+    throw new HttpsError("failed-precondition","Registration could not be completed");
+  }
+});
