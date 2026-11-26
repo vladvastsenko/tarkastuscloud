@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Forhåndsvis PDF</string>
     <string name="ui_preview_unavailable">Ingen PDF-fremviser installeret</string>
     <string name="guest_continue">Fortsæt uden registrering</string>
-    <string name="guest_explanation">Opret og gem rapporter lokalt. Synkronisering i skyen kræver login.</string>
+    <string name="guest_explanation">Registrering er kun nødvendig for Premium. Opret, rediger og gem rapporter lokalt gratis uden konto. Premium giver skysynkronisering og fjerner reklamer.</string>
     <string name="guest_local_notice">Gæstetilstand: rapporter gemmes kun på denne enhed. Synkronisering kræver login.</string>
     <string name="guest_sign_in">Log ind / Registrer dig</string>
     <string name="guest_cloud_required">Synkronisering i skyen kræver login.</string>
