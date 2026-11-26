@@ -29,7 +29,8 @@ internal class PremiumRegistrationPurchase(context: Context) {
             return
         }
         val key = "permit_" + premiumAccountHash(purchase.purchaseToken)
-        prefs.getString(key, null)?.let { onResult(it); return }
+        // Retain valid permits across retries; the server revalidates the purchase even after expiry.
+        prefs.getString(key, null)?.takeIf { it.matches(Regex("[a-f0-9]{64}")) }?.let { onResult(it); return }
         FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("preparePremiumRegistration")
             .call(mapOf("purchaseToken" to purchase.purchaseToken, "session" to session))
             .addOnCompleteListener { task ->
@@ -39,6 +40,7 @@ internal class PremiumRegistrationPurchase(context: Context) {
             }
     }
     fun complete(purchase: Purchase, email: String, password: String, onResult: (Boolean) -> Unit) {
+        if (email.isBlank() || password.length !in 8..128) { onResult(false); return }
         prepare(purchase) { permit ->
             if (permit == null) { onResult(false); return@prepare }
             FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("completePremiumEmailRegistration")
