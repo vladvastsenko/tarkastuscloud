@@ -32,8 +32,15 @@ internal class PremiumController {
     private var generation = 0
     private var deadline = 0L
     fun invalidate() { PremiumAccess.clear(); generation++; subscriptionState = SubscriptionState.FREE; active = false; busy = false; deadline = 0L }
-    fun tick() { if (active && SystemClock.elapsedRealtime() >= deadline) { active = false; subscriptionState = SubscriptionState.UNKNOWN; PremiumAccess.clear() } }
+    fun tick() { if (isDeveloperTestAccount()) { refresh(); return }; if (active && SystemClock.elapsedRealtime() >= deadline) { active = false; subscriptionState = SubscriptionState.UNKNOWN; PremiumAccess.clear() } }
     fun refresh() {
+        if (isDeveloperTestAccount()) {
+            generation++; busy = false; error = false; active = true
+            deadline = Long.MAX_VALUE
+            subscriptionState = SubscriptionState.ACTIVE
+            return
+        }
+        if (deadline == Long.MAX_VALUE) invalidate()
         val client = billing ?: return
         if (!ready || busy || uid == null) return
         val epoch = ++generation
