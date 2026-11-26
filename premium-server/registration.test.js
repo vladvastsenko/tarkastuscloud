@@ -18,3 +18,24 @@ test("reject pending and mismatched purchases",async()=>{const db=database(),s=s
 test("only one concurrent issue and consume succeeds",async()=>{const db=database(),s=secret();const issued=await Promise.allSettled([issuePermit(db,"token",s,purchase(s),1),issuePermit(db,"token",s,purchase(s),1)]);assert.equal(issued.filter(x=>x.status==="fulfilled").length,1);const p=issued.find(x=>x.status==="fulfilled").value;const used=await Promise.allSettled([consumePermit(db,p,s,"uid1",2),consumePermit(db,p,s,"uid2",2)]);assert.equal(used.filter(x=>x.status==="fulfilled").length,1);});
 test("wrong session and expired permit denied",async()=>{const db=database(),s=secret();const p=await issuePermit(db,"token",s,purchase(s),1);await assert.rejects(consumePermit(db,p,secret(),"uid",2));await assert.rejects(consumePermit(db,p,s,"uid",600001));});
 test("expired permit renews without new purchase and cannot be reused",async()=>{const db=database(),s=secret();const p=await issuePermit(db,"token",s,purchase(s),1);const q=await issuePermit(db,"token",s,purchase(s),600002);assert.notEqual(p,q);await assert.rejects(consumePermit(db,p,s,"uid",600003));await consumePermit(db,q,s,"uid",600003);await assert.rejects(issuePermit(db,"token",s,purchase(s),600004));});
+
+test("account reservation survives retry but rejects changed email or session",async()=>{
+ const {reserveAccount}=require("./registration"),db=database(),s=secret();
+ const p=await issuePermit(db,"token",s,purchase(s),1);
+ const uid=await reserveAccount(db,p,s,"example@example.com",2);
+ assert.match(uid,/^premium_[a-f0-9]{64}$/);
+ assert.equal(await reserveAccount(db,p,s,"EXAMPLE@example.com",600002),uid);
+ await assert.rejects(reserveAccount(db,p,s,"other@example.com",3));
+ await assert.rejects(reserveAccount(db,p,secret(),"example@example.com",3));
+});
+test("cancelled and pending subscriptions cannot reserve a new account",async()=>{
+ const db=database(),s=secret();
+ for(const state of ["CANCELED","PENDING","EXPIRED","PAUSED","ON_HOLD"])
+   await assert.rejects(issuePermit(db,"token",s,purchase(s,state),1));
+});
+test("server bound purchase hash verifies for reserved UID",()=>{
+ const {assess}=require("./policy"),s=secret(),uid="premium_"+secret();
+ assert.equal(assess(purchase(s),uid,1,hash(s)).uid,uid);
+ assert.equal(assess(purchase(s),uid,1,hash(s)).eligible,true);
+ assert.throws(()=>assess(purchase(s),uid,1,hash(secret())));
+});
