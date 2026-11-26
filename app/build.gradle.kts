@@ -8,6 +8,7 @@ plugins {
 
 val preview = providers.gradleProperty("offlinePreview").orNull == "true"
 if (!preview) apply(plugin = "com.google.gms.google-services")
+val productionAds = !preview && providers.gradleProperty("productionAds").orNull == "true"
 
 val cloudKeystorePath = System.getenv("CLOUD_KEYSTORE_PATH")
 val cloudKeystorePassword = System.getenv("CLOUD_KEYSTORE_PASSWORD")
@@ -24,6 +25,8 @@ android {
         versionCode = 1
         versionName = if (preview) "0.1.0-preview" else "0.1.0"
         buildConfigField("boolean", "OFFLINE_PREVIEW", preview.toString())
+        manifestPlaceholders["cloudAdMobAppId"] = if (productionAds) "ca-app-pub-5274592019802045~8397178305" else "ca-app-pub-3940256099942544~3347511713"
+        buildConfigField("String", "CLOUD_BANNER_ID", if (productionAds) "\"ca-app-pub-5274592019802045/9861021951\"" else "\"ca-app-pub-3940256099942544/6300978111\"")
     }
 
     if (!cloudKeystorePath.isNullOrBlank() &&

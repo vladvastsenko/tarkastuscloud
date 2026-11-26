@@ -181,12 +181,12 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     } else if (showUserGuide) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
         }
     } else if (showCloudBackup) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { CloudBackupScreen(onBack = { showCloudBackup = false }) }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
         }
     } else if (showSharedSettings) {
         SharedSettingsApp(onBack = { showSharedSettings = false })
@@ -204,7 +204,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             consent = consent
                 )
             }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
         }
     } else {
         UnifiedStartScreen(
@@ -252,19 +252,18 @@ private fun UnifiedStartScreen(
             Text(customLabels(AppLanguage.selected(LocalContext.current))[0])
         }
         Spacer(modifier = Modifier.weight(1f))
-        if (showAds) TestAdMobBanner()
+        if (showAds) CloudAdMobBanner()
     }
 }
 
 @Composable
-private fun TestAdMobBanner() {
+private fun CloudAdMobBanner() {
     val context = LocalContext.current
     val adView = remember(context) {
         AdView(context).apply {
             setAdSize(AdSize.BANNER)
-            // Official Google test banner ID. Never request live ads in testing builds.
-            // Production unit: test ads only
-            adUnitId = "ca-app-pub-3940256099942544/6300978111"
+            // Production IDs require explicit productionAds opt-in.
+            adUnitId = BuildConfig.CLOUD_BANNER_ID
             loadAd(AdRequest.Builder().build())
         }
     }
