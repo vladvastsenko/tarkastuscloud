@@ -48,3 +48,13 @@ test("expired permit requires fresh verification and correct session",async()=>{
  await assert.rejects(reserveAccount(db,p,s,"a@example.com",600002,600002));
  assert.match(await reserveAccount(db,p,s,"a@example.com",600002,660002),/^premium_/);
 });
+
+test("Google registration binds purchase to provider subject, not another identity or email", async () => {
+ const {reserveAccount}=require("./registration"),db=database(),s=secret();
+ const p=await issuePermit(db,"google-token",s,purchase(s),1);
+ const uid=await reserveAccount(db,p,s,"google:123456",2);
+ assert.equal(await reserveAccount(db,p,s,"google:123456",3),uid);
+ await assert.rejects(reserveAccount(db,p,s,"google:987654",3));
+ await assert.rejects(reserveAccount(db,p,s,"other@example.com",3));
+ await assert.rejects(reserveAccount(db,p,secret(),"google:123456",3));
+});
