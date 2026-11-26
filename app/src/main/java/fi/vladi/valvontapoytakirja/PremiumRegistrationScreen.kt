@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.android.billingclient.api.BillingClient
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,7 +41,7 @@ internal fun PremiumRegistrationScreen(onContinue: () -> Unit, onBack: () -> Uni
         Text(terms.first)
         Text(stringResource(R.string.cloud_sync))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) { Text(terms.second) }
-        OutlinedButton(onClick = onFree, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.guest_continue)) }
+        Button(onClick = onFree, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC8E6C9), contentColor = Color(0xFF173D20)), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.guest_continue)) }
         TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.back)) }
     }
 }
