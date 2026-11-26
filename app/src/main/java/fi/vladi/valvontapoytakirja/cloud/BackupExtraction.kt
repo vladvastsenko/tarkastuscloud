@@ -1,71 +1,68 @@
 package fi.vladi.valvontapoytakirja.cloud
 import java.io.*
-import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
+import java.util.zip.CRC32
 
 internal fun extractBackup(input: InputStream, staging: File, maxEntries: Int = 20000, maxBytes: Long = 2L * 1024 * 1024 * 1024) {
-        var manifestFound = false
-        val seenEntries = hashSetOf<String>()
-        var entryCount = 0
-        var totalBytes = 0L
-
-            ZipInputStream(BufferedInputStream(input)).use { zip ->
+    val archive = File.createTempFile("restore-", ".zip", staging.parentFile)
+    try {
+        input.use { source ->
+            archive.outputStream().buffered().use { out ->
+                val buffer = ByteArray(8192)
+                var total = 0L
                 while (true) {
-                    val entry = zip.nextEntry ?: break
-                    entryCount++
-                    require(entryCount <= maxEntries) { "Varmuuskopiossa on liian monta tiedostoa." }
-
-                    val name = entry.name.replace('\\', '/')
-                    require(seenEntries.add(name)) { "Varmuuskopiossa on päällekkäinen tiedostopolku." }
-                    require(!name.startsWith("/") && name.split('/').none { it == ".." || it.isBlank() }) {
-                        "Varmuuskopiossa on virheellinen tiedostopolku."
-                    }
-
-                    if (name == "TARKASTUSCLOUD_BACKUP_INFO.txt") {
-                        val manifestBytes = ByteArray(128)
-                        var count = 0
-                        while (count < manifestBytes.size) {
-                            val n = zip.read(manifestBytes, count, manifestBytes.size - count)
-                            if (n < 0) break
-                            count += n
-                        }
-                        require(count in 1..127 && zip.read() == -1) { "Varmuuskopion tunnistetiedot ovat virheelliset." }
-                        val text = String(manifestBytes, 0, count, Charsets.UTF_8).trim()
-                        require(text == "TARKASTUSCLOUD_BACKUP_V1") { "Tiedosto ei ole Tarkastus-varmuuskopio." }
-                        manifestFound = true
-                    } else if (name.startsWith("files/") && name.length > 6) {
-                        val relative = name.removePrefix("files/")
-                        val destination = File(staging, relative)
-                        val canonicalRoot = staging.canonicalFile
-                        val canonicalDestination = destination.canonicalFile
-                        require(canonicalDestination.path.startsWith(canonicalRoot.path + File.separator)) {
-                            "Varmuuskopiossa on kielletty tiedostopolku."
-                        }
-                        if (entry.isDirectory) {
-                            require(zip.read() == -1) { "Directory entry contains data" }
-                            destination.mkdirs()
-                        } else {
-                            destination.parentFile?.mkdirs()
-                            FileOutputStream(destination).buffered().use { output ->
-                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                while (true) {
-                                    val count = zip.read(buffer)
-                                    if (count < 0) break
-                                    totalBytes += count
-                                    require(totalBytes <= maxBytes) {
-                                        "Varmuuskopio on liian suuri palautettavaksi."
-                                    }
-                                    output.write(buffer, 0, count)
-                                }
-                            }
-                        }
-                    } else {
-                        require(name == "TARKASTUSCLOUD_BACKUP_INFO.txt") { "Varmuuskopio sisältää tuntemattoman tiedoston." }
-                    }
-                    zip.closeEntry()
+                    val n = source.read(buffer)
+                    if (n < 0) break
+                    total += n
+                    require(total <= maxBytes + 128L * 1024 * 1024) { "Archive too large" }
+                    out.write(buffer, 0, n)
                 }
             }
-            check(manifestFound) { "Varmuuskopion tunnistetietoja ei löytynyt." }
-            check(seenEntries.size > 1) { "Varmuuskopio ei sisällä palautettavia tiedostoja." }
-
-
+        }
+        ZipFile(archive).use { zip ->
+            require(zip.size() in 2..maxEntries)
+            val seen = hashSetOf<String>()
+            var manifest = false
+            var total = 0L
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                val name = entry.name.replace('\\', '/')
+                require(seen.add(name) && !entry.isDirectory && name.split('/').none { it.isBlank() || it == "." || it == ".." })
+                val marker = name == "TARKASTUSCLOUD_BACKUP_INFO.txt"
+                require(marker || name.startsWith("files/"))
+                val target = File(staging, name.removePrefix("files/")).canonicalFile
+                require(target.path.startsWith(staging.canonicalPath + File.separator))
+                val crc = CRC32()
+                var size = 0L
+                val bytes = ByteArrayOutputStream()
+                val output = if (marker) bytes else {
+                    target.parentFile?.mkdirs()
+                    target.outputStream().buffered()
+                }
+                output.use { out ->
+                    zip.getInputStream(entry).use { source ->
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val n = source.read(buffer)
+                            if (n < 0) break
+                            size += n
+                            if (marker) require(size <= 127) else {
+                                total += n
+                                require(total <= maxBytes)
+                            }
+                            crc.update(buffer,0,n)
+                            out.write(buffer,0,n)
+                        }
+                    }
+                }
+                require(size == entry.size && crc.value == entry.crc) { "ZIP checksum mismatch" }
+                if (marker) {
+                    require(bytes.toString("UTF-8").trim() == "TARKASTUSCLOUD_BACKUP_V1")
+                    manifest = true
+                }
+            }
+            check(manifest)
+        }
+    } finally { archive.delete() }
 }
