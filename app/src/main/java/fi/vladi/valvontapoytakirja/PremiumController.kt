@@ -23,6 +23,11 @@ internal class PremiumController {
         subscriptionState = state
         active = VerifiedSubscription("preview", state, Long.MAX_VALUE).permitsPremium("preview", 0)
     }
+    fun setDeveloperFree(free: Boolean) {
+        if (!isDeveloperTestAccount()) return
+        PremiumAccess.developerFree = free
+        refresh()
+    }
     var busy by mutableStateOf(false)
     var ready by mutableStateOf(false)
     var details by mutableStateOf<ProductDetails?>(null)
@@ -32,12 +37,12 @@ internal class PremiumController {
     private var generation = 0
     private var deadline = 0L
     fun invalidate() { PremiumAccess.clear(); generation++; subscriptionState = SubscriptionState.FREE; active = false; busy = false; deadline = 0L }
-    fun tick() { if (isDeveloperTestAccount()) { refresh(); return }; if (active && SystemClock.elapsedRealtime() >= deadline) { active = false; subscriptionState = SubscriptionState.UNKNOWN; PremiumAccess.clear() } }
+    fun tick() { if (isDeveloperTestAccount()) { refresh(); return }; if (deadline == Long.MAX_VALUE) invalidate(); if (active && SystemClock.elapsedRealtime() >= deadline) { active = false; subscriptionState = SubscriptionState.UNKNOWN; PremiumAccess.clear() } }
     fun refresh() {
         if (isDeveloperTestAccount()) {
-            generation++; busy = false; error = false; active = true
+            generation++; busy = false; error = false; active = !PremiumAccess.developerFree
             deadline = Long.MAX_VALUE
-            subscriptionState = SubscriptionState.ACTIVE
+            subscriptionState = if (active) SubscriptionState.ACTIVE else SubscriptionState.FREE
             return
         }
         if (deadline == Long.MAX_VALUE) invalidate()
@@ -87,7 +92,7 @@ internal fun rememberPremiumController(): PremiumController {
             val auth = FirebaseAuth.getInstance()
             val listener = FirebaseAuth.AuthStateListener {
                 val uid = it.currentUser?.uid
-                if (uid != controller.uid) { controller.invalidate(); controller.uid = uid; controller.refresh() }
+                if (uid != controller.uid) { PremiumAccess.developerFree = false; controller.invalidate(); controller.uid = uid; controller.refresh() }
             }
             auth.addAuthStateListener(listener)
             val billing = PremiumBilling(context) { _, _ -> controller.refresh() }
