@@ -24,8 +24,8 @@ class BackupRoundTripTest {
     @Test fun roundTripAllReportModelsAndImages() {
         val base = Files.createTempDirectory("backup-roundtrip").toFile()
         try {
-            val root = File(base,"source").apply { mkdirs() }
-            val restored = File(base,"restored").apply { mkdirs() }
+            val root = File(base,"device-a/files").apply { mkdirs() }
+            val restored = File(base,"device-b/files").apply { mkdirs() }
             fun file(path: String) = File(root,path).apply { parentFile?.mkdirs() }
             val jpeg = file("tarkastus_reports/test/photos/photo.jpg")
             val png = file("settings/signature.png")
@@ -33,11 +33,11 @@ class BackupRoundTripTest {
             image.setPixel(5,5,0xff123456.toInt())
             jpeg.outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.JPEG,90,it)) }
             png.outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,it)) }
-            val settings = AppSettings(inspectorName="Inspector",signatureImagePath=png.path,headerText="Header")
+            val settings = AppSettings(inspectorName="Inspector",signatureImagePath=png.path,logoPath=png.path,headerText="Header")
             file("app_settings.json").writeText(Json.encodeToString(AppSettings.serializer(),settings))
             val reports = ReportTypes.ids.map { type ->
-                InspectionReport(id=type,reportType=type,siteName="Site",signatureImagePath=png.path,
-                    observations=listOf(InspectionObservation(description="Observation",photos=listOf(ReportPhoto(filePath=jpeg.path)))))
+                InspectionReport(id=type,reportType=type,siteName="Site",signatureImagePath=png.path,logoPath=png.path,
+                    observations=listOf(InspectionObservation(description="Observation",photos=listOf(ReportPhoto(filePath=jpeg.path,annotatedPath=png.path)))))
             }
             assertEquals(7,reports.size)
             fun repository(dir: File): fi.vladi.tarkastuspoytakirja.data.ReportRepository {
@@ -51,8 +51,8 @@ class BackupRoundTripTest {
             reports.forEach { sourceRepository.save(it) }
             assertEquals(reports.toSet(),sourceRepository.listReports().toSet())
             val field = CustomField(id="photo",kind=CustomKind.PHOTOS)
-            val doc = CustomDocument(template=CustomTemplate(sections=listOf(CustomSection(fields=listOf(field)))),attachments=mapOf("photo" to listOf("photo.image")))
-            jpeg.copyTo(file("custom_reports/photo.image"))
+            val doc = CustomDocument(template=CustomTemplate(sections=listOf(CustomSection(fields=listOf(field)))),attachments=mapOf("photo" to listOf("12345678-1234-1234-1234-123456789abc.image")))
+            jpeg.copyTo(file("custom_reports/12345678-1234-1234-1234-123456789abc.image"))
             fi.vladi.valvontapoytakirja.CustomStore(File(root,"custom_reports")).saveDocument(doc)
             val archive = File(base,"backup.zip")
             writeBackupArchive(root,archive)
@@ -63,9 +63,41 @@ class BackupRoundTripTest {
             assertEquals(reports.toSet(),repository(restored).listReports().toSet())
             assertEquals(settings,Json.decodeFromString(AppSettings.serializer(),File(restored,"app_settings.json").readText()))
             assertEquals(doc,fi.vladi.valvontapoytakirja.CustomStore(File(restored,"custom_reports")).load().documents.single())
-            for (original in listOf(jpeg,png)) {
-                val decoded = BitmapFactory.decodeFile(File(restored,original.relativeTo(root).path).path) ?: error("Image decode failed")
-                assertEquals(32,decoded.width); assertEquals(24,decoded.height)
+            relocateBackupPaths(restored,restored)
+            // Simulate selecting the restored copy and exporting the retained version.
+            val retained = File(base,"tarkastus_retained_" + java.util.UUID.randomUUID())
+            assertTrue(root.renameTo(retained))
+            val retainedZip = File(base,"retained.zip")
+            writeBackupArchive(retained,retainedZip)
+            val third = File(base,"device-c/files").apply { mkdirs() }
+            extractBackup(retainedZip.inputStream(),third)
+            relocateBackupPaths(third,third)
+            assertTrue(retained.isDirectory)
+            assertFalse(root.exists())
+            for (destination in listOf(restored,third)) {
+                val loaded = repository(destination).listReports()
+                assertEquals(7,loaded.size)
+                fun checkImage(path: String) {
+                    assertTrue(File(path).canonicalPath.startsWith(destination.canonicalPath + File.separator))
+                    val bitmap = BitmapFactory.decodeFile(path) ?: error("Missing image: " + path)
+                    assertEquals(32,bitmap.width)
+                    assertEquals(24,bitmap.height)
+                    bitmap.recycle()
+                }
+                loaded.forEach { report ->
+                    checkImage(report.logoPath)
+                    checkImage(report.signatureImagePath)
+                    report.observations.flatMap { it.photos }.forEach {
+                        checkImage(it.filePath); checkImage(it.annotatedPath)
+                    }
+                }
+                val restoredSettings = repository(destination).loadSettings()
+                checkImage(restoredSettings.logoPath)
+                checkImage(restoredSettings.signatureImagePath)
+                val store = fi.vladi.valvontapoytakirja.CustomStore(File(destination,"custom_reports"))
+                val loadedDoc = store.load().documents.single()
+                assertEquals(doc,loadedDoc)
+                loadedDoc.attachments.values.flatten().forEach { checkImage(store.image(it).path) }
             }
         } finally { base.deleteRecursively() }
     }
