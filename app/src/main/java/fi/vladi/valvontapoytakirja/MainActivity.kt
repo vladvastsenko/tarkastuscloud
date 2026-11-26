@@ -110,7 +110,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                         }
                     } else {
                         if (BuildConfig.OFFLINE_PREVIEW) UnifiedLauncher(onSignOut = {})
-                        else CloudAuthGate { signOut -> UnifiedLauncher(onSignOut = signOut) }
+                        else CloudAuthGate { signOut, checkout, finished, declined -> UnifiedLauncher(onSignOut = signOut, registrationCheckout = checkout, onCheckoutFinished = finished, onCheckoutDeclined = declined) }
                     }
                 }
             }
@@ -170,13 +170,23 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
 }
 
 @Composable
-private fun UnifiedLauncher(onSignOut: () -> Unit) {
+private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean = false, onCheckoutFinished: () -> Unit = {}, onCheckoutDeclined: () -> Unit = {}) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { SharedDocumentsArchive.ensureFolder(context) }
     }
     val premium = rememberPremiumController()
-    var showPremium by remember { mutableStateOf(false) }
+    var showPremium by remember { mutableStateOf(registrationCheckout) }
+    LaunchedEffect(registrationCheckout, premium.active) {
+        if (registrationCheckout) {
+            showPremium = true
+            if (premium.active) onCheckoutFinished()
+        }
+    }
+    val closePremium: () -> Unit = {
+        showPremium = false
+        if (registrationCheckout && !premium.active) onCheckoutDeclined()
+    }
     var showLocalBackup by remember { mutableStateOf(false) }
     val consent = remember(context) { if (BuildConfig.OFFLINE_PREVIEW) null else AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent?.request() }
@@ -189,7 +199,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
         when {
             showLocalBackup -> showLocalBackup = false
-            showPremium -> showPremium = false
+            showPremium -> closePremium()
             showUserGuide -> showUserGuide = false
             showCloudBackup -> showCloudBackup = false
             showSharedSettings -> showSharedSettings = false
@@ -199,7 +209,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     if (showLocalBackup) {
         LocalBackupScreen(onBack = { showLocalBackup = false })
     } else if (showPremium) {
-        PremiumManagementScreen(premium, onBack = { showPremium = false }, onSignIn = onSignOut)
+        PremiumManagementScreen(premium, onBack = closePremium, onSignIn = onSignOut, registrationCheckout = registrationCheckout)
     } else if (showCustomReport) {
         CustomReportScreen(onBack = { showCustomReport = false })
     } else if (showUserGuide) {
