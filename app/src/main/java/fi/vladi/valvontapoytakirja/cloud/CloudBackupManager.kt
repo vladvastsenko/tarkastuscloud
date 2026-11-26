@@ -46,15 +46,7 @@ object CloudBackupManager {
     private const val MAX_ENTRIES = 20_000
     private const val MAX_UNPACKED_BYTES = 2L * 1024L * 1024L * 1024L
 
-    fun backupToFolder(context: Context, treeUri: Uri): String {
-        val folder = DocumentFile.fromTreeUri(context, treeUri)
-            ?: error("Valittua Google Drive -kansiota ei voi avata.")
-        check(folder.isDirectory && folder.canWrite()) {
-            "Valittuun kansioon ei voi tallentaa."
-        }
-
-        val tempZip = File(context.cacheDir, "tarkastuscloud_backup_${System.currentTimeMillis()}.zip")
-        try {
+    private fun writeArchive(context: Context, tempZip: File) {
             fi.vladi.valvontapoytakirja.CustomStore.withStorageLock {
             ZipOutputStream(BufferedOutputStream(FileOutputStream(tempZip))).use { zip ->
                 zip.putNextEntry(ZipEntry(MANIFEST))
@@ -89,6 +81,29 @@ object CloudBackupManager {
             }
 
             }
+
+    }
+
+    fun backupToDocument(context: Context, uri: Uri) {
+        val temp = File.createTempFile("local-backup-", ".zip", context.cacheDir)
+        try {
+            writeArchive(context, temp)
+            context.contentResolver.openOutputStream(uri, "w")?.use { output ->
+                temp.inputStream().buffered().use { it.copyTo(output) }
+            } ?: error("Cannot write backup")
+        } finally { temp.delete() }
+    }
+
+    fun backupToFolder(context: Context, treeUri: Uri): String {
+        val folder = DocumentFile.fromTreeUri(context, treeUri)
+            ?: error("Valittua Google Drive -kansiota ei voi avata.")
+        check(folder.isDirectory && folder.canWrite()) {
+            "Valittuun kansioon ei voi tallentaa."
+        }
+
+        val tempZip = File(context.cacheDir, "tarkastuscloud_backup_${System.currentTimeMillis()}.zip")
+        try {
+            writeArchive(context, tempZip)
             val displayName = "TarkastusCloud_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
             check(folder.findFile(displayName) == null) { "Backup already exists" }
             val target = folder.createFile("application/zip", displayName)

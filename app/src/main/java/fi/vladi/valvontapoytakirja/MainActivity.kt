@@ -170,6 +170,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     }
     val premium = rememberPremiumController()
     var showPremium by remember { mutableStateOf(false) }
+    var showLocalBackup by remember { mutableStateOf(false) }
     val consent = remember(context) { if (BuildConfig.OFFLINE_PREVIEW) null else AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent?.request() }
     var showSharedSettings by remember { mutableStateOf(false) }
@@ -178,8 +179,9 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     var showUserGuide by remember { mutableStateOf(false) }
     var showCustomReport by remember { mutableStateOf(false) }
 
-    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
+    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
         when {
+            showLocalBackup -> showLocalBackup = false
             showPremium -> showPremium = false
             showUserGuide -> showUserGuide = false
             showCloudBackup -> showCloudBackup = false
@@ -187,7 +189,9 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             showManagement -> showManagement = false
         }
     }
-    if (showPremium) {
+    if (showLocalBackup) {
+        LocalBackupScreen(onBack = { showLocalBackup = false })
+    } else if (showPremium) {
         PremiumManagementScreen(premium, onBack = { showPremium = false }, onSignIn = onSignOut)
     } else if (showCustomReport) {
         CustomReportScreen(onBack = { showCustomReport = false })
@@ -212,6 +216,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             },
             onCloudBackup = { if (premium.active) showCloudBackup = true else showPremium = true },
             onPremium = { showPremium = true },
+            onLocalBackup = { showLocalBackup = true },
             onUserGuide = { showUserGuide = true },
             onBack = { showManagement = false },
             onSignOut = onSignOut,
@@ -292,6 +297,7 @@ private fun ManagementScreen(
     onSettings: () -> Unit,
     onCloudBackup: () -> Unit,
     onPremium: () -> Unit,
+    onLocalBackup: () -> Unit,
     onUserGuide: () -> Unit,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
@@ -332,6 +338,7 @@ private fun ManagementScreen(
                 }
             }
         }
+        OutlinedButton(onClick = onLocalBackup, modifier = Modifier.fillMaxWidth()) { Text(localBackupLabels(AppLanguage.selected(context))[0]) }
         OutlinedButton(onClick = onPremium, modifier = Modifier.fillMaxWidth()) { Text("Premium") }
         if (!guestMode) BiometricSettingsControl()
         else {
