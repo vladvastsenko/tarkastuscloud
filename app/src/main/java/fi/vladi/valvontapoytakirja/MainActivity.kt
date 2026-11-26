@@ -91,6 +91,13 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val recovery = runCatching {
+            fi.vladi.valvontapoytakirja.cloud.recoverInterruptedRestore(java.io.File(applicationInfo.dataDir, "files"))
+        }
+        if (recovery.isFailure) {
+            setContent { MaterialTheme { Text("Data recovery required. Original backup retained.") } }
+            return
+        }
         setContent {
             MaterialTheme(colorScheme = fi.vladi.tarkastuspoytakirja.TarkastusBlueColors) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
