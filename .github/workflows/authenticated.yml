@@ -76,6 +76,25 @@ jobs:
             if [ "$attempt" = 3 ]; then exit 1; fi
             sleep $((attempt * 30))
           done
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test real Android PDF export
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          script: gradle :app:connectedDebugAndroidTest --no-daemon -PofflinePreview=false -PpremiumCheckout=false -PproductionAds=false -Pandroid.testInstrumentationRunnerArguments.class=fi.vladi.valvontapoytakirja.CustomPdfExportTest
+      - name: Publish Android test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: app/build/outputs/androidTest-results/
+          if-no-files-found: warn
       - name: Verify APK signature and record certificate
         run: |
           set -euo pipefail
