@@ -25,7 +25,7 @@ internal class CustomStore(context: Context) {
     private val root = File(context.filesDir, "custom_reports").apply { mkdirs() }
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    fun load(): CustomLibrary = if (file.baseFile.exists()) json.decodeFromString<CustomLibrary>(file.readFully().decodeToString()) else CustomLibrary()
+    fun load(): CustomLibrary = try { json.decodeFromString<CustomLibrary>(file.readFully().decodeToString()) } catch (e: java.io.FileNotFoundException) { if (file.baseFile.exists()) throw e else CustomLibrary() }
     fun save(value: CustomLibrary) {
         val out = file.startWrite()
         try { out.write(json.encodeToString(value).encodeToByteArray()); file.finishWrite(out) }

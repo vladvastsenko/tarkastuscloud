@@ -176,6 +176,14 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     var showUserGuide by remember { mutableStateOf(false) }
     var showCustomReport by remember { mutableStateOf(false) }
 
+    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
+        when {
+            showUserGuide -> showUserGuide = false
+            showCloudBackup -> showCloudBackup = false
+            showSharedSettings -> showSharedSettings = false
+            showManagement -> showManagement = false
+        }
+    }
     if (showCustomReport) {
         CustomReportScreen(onBack = { showCustomReport = false })
     } else if (showUserGuide) {

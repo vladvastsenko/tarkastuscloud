@@ -19,7 +19,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         if (footer.isNotBlank()) page.canvas.drawText(footer.take(paint.breakText(footer,true,490f,null)),42f,815f,paint)
         paint.textSize = 10f; page.canvas.drawText(pageNumber.toString(), 550f, 815f, paint); pdf.finishPage(page) }
     fun newPage() { finish(); page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create()); y = 44f }
-    fun space(height: Float) { if (y + height > 790f) newPage() }
+    fun space(height: Float) { if (y + height > 790.01f) newPage() }
     var afterDedicatedPhotos = false
     fun resumeText() { if (afterDedicatedPhotos) { newPage(); afterDedicatedPhotos = false } }
     fun line(text: String, bold: Boolean = false) {
@@ -33,6 +33,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
                 val n = if (rest.isEmpty()) 0 else paint.breakText(rest,true,510f,null).coerceAtLeast(1)
                 val cut = if (n < rest.length) rest.take(n).lastIndexOf(' ').takeIf { it > 0 } ?: n else n
                 space(22f); paint.textSize = if (bold) 15f else 12f
+                paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 page.canvas.drawText(rest.take(cut),42f,y,paint); y += 20f
                 rest = rest.drop(cut).trimStart()
             } while (rest.isNotEmpty())
@@ -89,10 +90,13 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         val gap = 8f
         val width = (510f-gap*(cols-1))/cols
         // Fixed geometry for every page, including the final partial page.
-        val height = (746f-gap*(rows-1))/rows
-        if (f.separatePhotoPages && y > 44f) newPage()
-        for (row in names.chunked(cols)) {
-            space(height)
+        val height = (716f-gap*(rows-1))/rows
+        val title = f.label.ifBlank { labels[25+f.kind.ordinal] }
+        resumeText()
+        if (f.separatePhotoPages && y > 44f || y+20f+height > 790.01f) newPage()
+        line(title,true)
+        for ((rowIndex,row) in names.chunked(cols).withIndex()) {
+            if (rowIndex > 0 && (y+height > 790.01f || (f.separatePhotoPages && rowIndex % rows == 0))) { newPage(); line(title,true) }
             row.forEachIndexed { index,name ->
                 val file = store.image(name)
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -140,13 +144,13 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             if (fields.isEmpty()) continue
             if (s.title.isNotBlank()) line(s.title,true)
             for (f in fields) {
-                line(f.label.ifBlank { labels[25+f.kind.ordinal] },true)
-                val value = report.values[f.id] ?: f.defaultValue
-                if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(if (f.kind == CustomKind.CHECKBOX) (if (value == "true") "☑" else "☐") else value)
                 if (f.kind == CustomKind.PHOTOS) {
                     photoGrid(f,report.attachments[f.id].orEmpty())
                     continue
                 }
+                line(f.label.ifBlank { labels[25+f.kind.ordinal] },true)
+                val value = report.values[f.id] ?: f.defaultValue
+                if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(if (f.kind == CustomKind.CHECKBOX) (if (value == "true") "☑" else "☐") else value)
                 for (name in report.attachments[f.id].orEmpty()) {
                     val file = store.image(name)
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
