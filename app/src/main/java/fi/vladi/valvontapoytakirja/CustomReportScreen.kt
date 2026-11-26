@@ -23,7 +23,14 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val l = customLabels(AppLanguage.selected(context))
     val store = remember { CustomStore(context) }
-    val loaded = remember { runCatching { store.load() } }
+    val loadedState by produceState<Result<CustomLibrary>?>(null, store) {
+        value = withContext(Dispatchers.IO) { runCatching { store.load() } }
+    }
+    val loaded = loadedState
+    if (loaded == null) {
+        Column(Modifier.fillMaxSize().padding(16.dp)) { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        return
+    }
     var library by remember { mutableStateOf(loaded.getOrDefault(CustomLibrary())) }
     var template by remember { mutableStateOf<CustomTemplate?>(null) }
     var document by remember { mutableStateOf<CustomDocument?>(null) }
@@ -142,12 +149,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             }
             OutlinedButton(onClick = { updateTemplate(t.copy(sections = t.sections + CustomSection())) }) { Text(l[6]) }
             Button(onClick = { persist(library.copy(templates = library.templates.filterNot { it.id == t.id } + t)) }, enabled = t.title.isNotBlank()) { Text(l[12]) }
-            Button(onClick = { document = CustomDocument(template = t) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
+            Button(onClick = { template = null; updateDocument(CustomDocument(template = t, pdfLanguage = AppLanguage.selected(context))) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
         } else {
             Button(onClick = { template = CustomTemplate() }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
-            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { document = CustomDocument(template = item) }) { Text(l[13]) }; TextButton(onClick = { template = item.copy(id = customId()) }) { Text(l[18]) } } }
+            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { template = item.copy(id = customId()) }) { Text(l[18]) } } }
             Text(l[3], style = MaterialTheme.typography.titleMedium)
             for (item in library.documents) OutlinedButton(onClick = { document = item }) { Text(item.template.title) }
         }
