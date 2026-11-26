@@ -31,8 +31,20 @@ jobs:
           python3 -c 'from pathlib import Path; assert all(Path(p).read_bytes().startswith(bytes.fromhex("89504e470d0a1a0a")) for p in ["app/src/main/res/drawable/icon.png","app/src/main/res/drawable/tarkastuscloud.png"])'
       - run: python3 scripts/check-cloud-locales.py
       - run: gradle :app:assembleDebug -PofflinePreview=true --no-daemon
+      - name: Verify APK signature and record certificate
+        run: |
+          set -eu
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          test -n "$signer"
+          for apk in app/build/outputs/apk/debug/*.apk; do
+            "$signer" verify --verbose --print-certs "$apk" | tee "$apk.cert.txt"
+            sha256sum "$apk" > "$apk.sha256"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: Tarkastus-Cloud-0.1.0-Preview
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/*.cert.txt
+            app/build/outputs/apk/debug/*.sha256
           if-no-files-found: error

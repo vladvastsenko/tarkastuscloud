@@ -31,6 +31,17 @@ internal class CustomStore(context: Context) {
         try { out.write(json.encodeToString(value).encodeToByteArray()); file.finishWrite(out) }
         catch (e: Exception) { file.failWrite(out); throw e }
     }
+    // Called only on opening the editor, before any new attachments are created.
+    // Retain recent unreferenced files to tolerate interrupted imports or recovery.
+    fun cleanUnused(value: CustomLibrary) {
+        val used = value.documents.flatMap { it.attachments.values.flatten() }.toSet()
+        val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+        root.listFiles()?.forEach { candidate ->
+            if (candidate.isFile && candidate.name.matches(Regex("[0-9a-fA-F-]{36}\\.(image|png)")) &&
+                candidate.name !in used && candidate.lastModified() in 1 until cutoff &&
+                candidate.canonicalFile.parentFile == root.canonicalFile) candidate.delete()
+        }
+    }
     fun importImage(context: Context, uri: android.net.Uri): String {
         val target = File(root, customId() + ".image")
         try { context.contentResolver.openInputStream(uri)?.use { input -> target.outputStream().use { val buffer = ByteArray(8192); var total = 0L; while (true) { val n = input.read(buffer); if (n < 0) break; total += n; require(total <= 50L * 1024 * 1024); it.write(buffer,0,n) } } } ?: error("Cannot read image") }

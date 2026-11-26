@@ -32,6 +32,20 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (loaded.isFailure) { message = l[24]; return }
         runCatching { store.save(next) }.onSuccess { library = next; message = l[23] }.onFailure { message = l[24] }
     }
+    LaunchedEffect(Unit) {
+        if (loaded.isSuccess) withContext(Dispatchers.IO) { runCatching { store.cleanUnused(loaded.getOrThrow()) } }
+    }
+    // Persist each committed editor change atomically. Do not overwrite unreadable libraries.
+    fun updateDocument(next: CustomDocument) {
+        if (loaded.isFailure) { message = l[24]; return }
+        val updated = library.copy(documents = library.documents.filterNot { it.id == next.id } + next)
+        runCatching { store.save(updated) }.onSuccess { library = updated; document = next }.onFailure { message = l[24] }
+    }
+    fun updateTemplate(next: CustomTemplate) {
+        if (loaded.isFailure) { message = l[24]; return }
+        val updated = library.copy(templates = library.templates.filterNot { it.id == next.id } + next)
+        runCatching { store.save(updated) }.onSuccess { library = updated; template = next }.onFailure { message = l[24] }
+    }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun back() {
@@ -57,15 +71,15 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         val d = document
         val t = template
         if (d != null) {
-            CustomPdfLanguage(d.pdfLanguage.ifBlank { AppLanguage.selected(context) }) { language -> document = document?.copy(pdfLanguage = language) }
+            CustomPdfLanguage(d.pdfLanguage.ifBlank { AppLanguage.selected(context) }) { language -> document?.let { updateDocument(it.copy(pdfLanguage = language)) } }
             Text(d.template.title, style = MaterialTheme.typography.titleLarge)
             for (section in d.template.sections) {
                 Text(section.title, style = MaterialTheme.typography.titleMedium)
                 for (field in section.fields) key(field.id) {
                     val value = d.values[field.id] ?: field.defaultValue
                     CustomValueEditor(field, value, d.attachments[field.id].orEmpty(), l, store,
-                        onValue = { v -> document = document?.let { it.copy(values = it.values + (field.id to v)) } },
-                        onImages = { v -> document = document?.let { it.copy(attachments = it.attachments + (field.id to v)) } },
+                        onValue = { v -> document?.let { updateDocument(it.copy(values = it.values + (field.id to v))) } },
+                        onImages = { v -> document?.let { updateDocument(it.copy(attachments = it.attachments + (field.id to v))) } },
                         onError = { message = l[24] })
                 }
             }
@@ -85,12 +99,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             }) { Text(l[15]) }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         } else if (t != null) {
-            OutlinedTextField(t.title, { template = t.copy(title = it) }, label = { Text(l[4]) }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(t.title, { updateTemplate(t.copy(title = it)) }, label = { Text(l[4]) }, modifier = Modifier.fillMaxWidth())
             for ((si, section) in t.sections.withIndex()) key(section.id) {
-                fun update(s: CustomSection) { template = t.copy(sections = t.sections.replaceAt(si,s)) }
+                fun update(s: CustomSection) { updateTemplate(t.copy(sections = t.sections.replaceAt(si,s))) }
                 Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(section.title, { update(section.copy(title = it)) }, label = { Text(l[5]) })
-                    Row { TextButton(onClick = { template = t.copy(sections = t.sections.moveAt(si,-1)) }) { Text("↑") }; TextButton(onClick = { template = t.copy(sections = t.sections.moveAt(si,1)) }) { Text("↓") }; TextButton(onClick = { template = t.copy(sections = t.sections.filterNot { it.id == section.id }) }) { Text(l[17]) } }
+                    Row { TextButton(onClick = { updateTemplate(t.copy(sections = t.sections.moveAt(si,-1))) }) { Text("↑") }; TextButton(onClick = { updateTemplate(t.copy(sections = t.sections.moveAt(si,1))) }) { Text("↓") }; TextButton(onClick = { updateTemplate(t.copy(sections = t.sections.filterNot { it.id == section.id })) }) { Text(l[17]) } }
                     for ((fi, f) in section.fields.withIndex()) key(f.id) {
                         fun change(v: CustomField) { update(section.copy(fields = section.fields.replaceAt(fi,v))) }
                         OutlinedTextField(f.label, { change(f.copy(label = it)) }, label = { Text(l[8]) })
@@ -108,7 +122,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                     OutlinedButton(onClick = { update(section.copy(fields = section.fields + CustomField())) }) { Text(l[7]) }
                 } }
             }
-            OutlinedButton(onClick = { template = t.copy(sections = t.sections + CustomSection()) }) { Text(l[6]) }
+            OutlinedButton(onClick = { updateTemplate(t.copy(sections = t.sections + CustomSection())) }) { Text(l[6]) }
             Button(onClick = { persist(library.copy(templates = library.templates.filterNot { it.id == t.id } + t)) }, enabled = t.title.isNotBlank()) { Text(l[12]) }
             Button(onClick = { document = CustomDocument(template = t) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
         } else {
