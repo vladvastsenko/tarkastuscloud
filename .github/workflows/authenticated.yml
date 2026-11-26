@@ -62,7 +62,7 @@ jobs:
             echo "::error::Missing permanent Cloud signing key"; exit 1
           fi
           for attempt in 1 2 3; do
-            if gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon -PpremiumCheckout=false -PproductionAds=false; then break; fi
+            if gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon -PofflinePreview=false -PpremiumCheckout=false -PproductionAds=false; then break; fi
             if [ "$attempt" = 3 ]; then exit 1; fi
             sleep $((attempt * 30))
           done
@@ -75,6 +75,7 @@ jobs:
             test -f "$apk"
             "$signer" verify --verbose --print-certs "$apk" | tee "$apk.cert.txt"
             grep -Fi "Signer #1 certificate SHA-256 digest: 5ae050fda66bdd28efbd178c811fceb3aeb3669c0f8a0b6ae8e279c6a87612d7" "$apk.cert.txt" || { echo "::error::Unexpected Cloud signing certificate"; exit 1; }
+            grep -Fi "Signer #1 certificate SHA-1 digest: ecd6ce941543e92ea89938ef13f2185a9395eaaf" "$apk.cert.txt" || { echo "::error::Unexpected Cloud SHA-1"; exit 1; }
             sha256sum "$apk" > "$apk.sha256"
           done
       - name: Publish unit test reports
@@ -87,7 +88,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Tarkastus-Cloud-0.1.0-Authenticated
+          name: Tarkastus-Cloud-Authenticated-Developer
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/*.cert.txt
