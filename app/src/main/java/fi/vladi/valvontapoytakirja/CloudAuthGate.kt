@@ -98,14 +98,10 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
         }
     }
     if (showPremiumTerms && !signedIn && !guest) {
-        val terms = premiumTerms(AppLanguage.selected(context))
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showPremiumTerms = false },
-            title = { Text("Tarkastus Cloud Premium") },
-            text = { Text(terms.first) },
-            confirmButton = { TextButton(onClick = { showPremiumTerms = false; register = true }) { Text(terms.second) } },
-            dismissButton = { TextButton(onClick = { showPremiumTerms = false }) { Text(stringResource(R.string.back)) } }
-        )
+        PremiumRegistrationScreen(onContinue = { showPremiumTerms = false; register = true },
+            onBack = { showPremiumTerms = false },
+            onFree = { showPremiumTerms = false; guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
+        return
     }
     if (guest && !signedIn) {
         content({ guest = false; guestPrefs.edit().putBoolean("enabled", false).apply() })
