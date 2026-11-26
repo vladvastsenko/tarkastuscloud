@@ -95,3 +95,25 @@ exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInst
     throw new HttpsError("failed-precondition","Registration could not be completed");
   }
 });
+
+ // Existing Google identities only; never create or link accounts by email.
+const {OAuth2Client} = require("google-auth-library");
+const {defineString} = require("firebase-functions/params");
+const googleAudience = defineString("GOOGLE_WEB_CLIENT_ID");
+const googleVerifier = new OAuth2Client();
+exports.signInExistingGoogle = onCall({region:"europe-west1",maxInstances:5,enforceAppCheck:true}, async request => {
+  const token = request.data?.idToken;
+  if (typeof token !== "string" || token.length > 8192 || !token)
+    throw new HttpsError("invalid-argument","Invalid Google credential");
+  try {
+    const ticket = await googleVerifier.verifyIdToken({idToken:token,audience:googleAudience.value()});
+    const identity = ticket.getPayload();
+    if (!identity?.sub || identity.email_verified !== true) throw new Error("Unverified identity");
+    const admin = getAuth();
+    const user = await admin.getUserByProviderUid("google.com",identity.sub);
+    if (user.disabled) throw new Error("Disabled account");
+    return {customToken:await admin.createCustomToken(user.uid)};
+  } catch (_) {
+    throw new HttpsError("permission-denied","Existing Google account required");
+  }
+});
