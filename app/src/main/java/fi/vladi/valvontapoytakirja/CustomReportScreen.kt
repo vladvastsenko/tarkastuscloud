@@ -147,19 +147,35 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Text(d.template.title, style = MaterialTheme.typography.titleLarge)
             Row { Switch(d.useSharedSettings, { enabled -> document?.let { updateDocument(it.copy(useSharedSettings = enabled)) } }); Text(extra[0]) }
             if (d.useSharedSettings) {
+                val sharedLabels = when (language.substringBefore("-")) {
+                    "fi" -> listOf("Tilaaja", "Kohde", "Tarkastaja")
+                    "ru" -> listOf("Клиент", "Объект", "Контролёр")
+                    "sv" -> listOf("Beställare", "Objekt", "Kontrollant")
+                    "nb" -> listOf("Kunde", "Objekt", "Kontrollør")
+                    "da" -> listOf("Kunde", "Objekt", "Kontrollør")
+                    "et" -> listOf("Tellija", "Objekt", "Kontrollija")
+                    "lv" -> listOf("Pasūtītājs", "Objekts", "Inspektors")
+                    "lt" -> listOf("Užsakovas", "Objektas", "Inspektorius")
+                    "fr" -> listOf("Client", "Site", "Inspecteur")
+                    "es" -> listOf("Cliente", "Obra", "Inspector")
+                    "it" -> listOf("Cliente", "Sito", "Ispettore")
+                    "de" -> listOf("Auftraggeber", "Objekt", "Prüfer")
+                    "pl" -> listOf("Klient", "Obiekt", "Inspektor")
+                    else -> listOf("Customer", "Site", "Inspector")
+                }
                 val repository = remember(context) { fi.vladi.valvontapoytakirja.data.ReportRepository(context) }
                 val customers = remember(repository) { repository.listCustomers() }
                 val sites = remember(repository, d.customerId) { repository.listSites(d.customerId.takeIf { it.isNotBlank() }) }
                 val inspectors = remember(repository) { repository.listInspectors() }
-                CustomSharedChoice("👥", d.customerText, customers.map { it.id to it.name }) { id ->
+                CustomSharedChoice(sharedLabels[0], d.customerText, customers.map { it.id to it.name }) { id ->
                     val selected = customers.firstOrNull { it.id == id }
                     document?.let { updateDocument(it.copy(customerId = id, customerText = selected?.let { p -> listOf(p.name,p.businessId,p.address,listOf(p.postalCode,p.city).filter { v -> v.isNotBlank() }.joinToString(" "),p.contactPerson,p.phone,p.email).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty(),siteId = "",siteText = "")) }
                 }
-                CustomSharedChoice("📍", d.siteText, sites.map { it.id to it.name }) { id ->
+                CustomSharedChoice(sharedLabels[1], d.siteText, sites.map { it.id to it.name }) { id ->
                     val selected = sites.firstOrNull { it.id == id }
                     document?.let { updateDocument(it.copy(siteId = id, siteText = selected?.let { p -> listOf(p.name,p.address).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty())) }
                 }
-                CustomSharedChoice("👷", d.inspectorText, inspectors.map { it.id to it.name }) { id ->
+                CustomSharedChoice(sharedLabels[2], d.inspectorText, inspectors.map { it.id to it.name }) { id ->
                     val selected = inspectors.firstOrNull { it.id == id }
                     document?.let { updateDocument(it.copy(inspectorId = id, inspectorText = selected?.let { p -> listOf(p.name,p.certificateNumber,p.phone,p.email).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty())) }
                 }
