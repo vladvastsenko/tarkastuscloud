@@ -50,7 +50,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                 }
             }
             fun valid(): Boolean = d.template.sections.flatMap { it.fields }.all { f ->
-                !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else (d.values[f.id] ?: f.defaultValue).isNotBlank()
+                !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
             Button(onClick = { persist(library.copy(documents = library.documents.filterNot { it.id == d.id } + d)) }) { Text(l[14]) }
             Button(onClick = { if (!valid()) message = l[22] else runCatching { exportCustomPdf(context, store, d) }.onSuccess { message = l[23] }.onFailure { message = l[24] } }) { Text(l[15]) }
@@ -68,8 +68,8 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                         Box { OutlinedButton(onClick = { menu = true }) { Text(l[25+f.kind.ordinal]) }; DropdownMenu(menu,{ menu = false }) { CustomKind.entries.forEach { k -> DropdownMenuItem(text = { Text(l[25+k.ordinal]) }, onClick = { change(f.copy(kind = k)); menu = false }) } } }
                         if (f.kind != CustomKind.HEADING) {
                             Row { Checkbox(f.required,{ change(f.copy(required = it)) }); Text(l[9]) }
-                            if (f.kind in listOf(CustomKind.SINGLE,CustomKind.MULTIPLE)) OutlinedTextField(f.options.joinToString("\n"), { change(f.copy(options = it.split("\n"))) }, label = { Text(l[10]) })
-                            if (f.kind !in listOf(CustomKind.PHOTOS,CustomKind.SIGNATURE)) OutlinedTextField(f.defaultValue,{ change(f.copy(defaultValue = it)) },label = { Text(l[11]) })
+                            if (f.kind in listOf(CustomKind.SINGLE,CustomKind.MULTIPLE,CustomKind.TABLE)) OutlinedTextField(f.options.joinToString("\n"), { change(f.copy(options = it.split("\n"))) }, label = { Text(l[10]) })
+                            if (f.kind !in listOf(CustomKind.PHOTOS,CustomKind.SIGNATURE,CustomKind.TABLE)) OutlinedTextField(f.defaultValue,{ change(f.copy(defaultValue = it)) },label = { Text(l[11]) })
                         }
                         Row { TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,-1))) }) { Text("↑") }; TextButton(onClick = { update(section.copy(fields = section.fields.moveAt(fi,1))) }) { Text("↓") }; TextButton(onClick = { update(section.copy(fields = section.fields + f.copy(id = customId()))) }) { Text(l[18]) }; TextButton(onClick = { update(section.copy(fields = section.fields.filterNot { it.id == f.id })) }) { Text(l[17]) } }
                         HorizontalDivider()
@@ -103,7 +103,10 @@ private fun CustomValueEditor(f: CustomField, value: String, images: List<String
             val selected = if (f.kind == CustomKind.SINGLE) value == option else option in value.split("\n")
             Row { Checkbox(selected, { checked -> onValue(if (f.kind == CustomKind.SINGLE) { if (checked) option else "" } else { val set = value.split("\n").filter { it.isNotBlank() }.toMutableSet(); if (checked) set.add(option) else set.remove(option); set.joinToString("\n") }) }); Text(option) }
         }
-        CustomKind.PHOTOS, CustomKind.SIGNATURE -> { OutlinedButton(onClick = { picker.launch("image/*") }) { Text(l[21] + " (" + images.size + ")") }; images.forEachIndexed { i, _ -> TextButton(onClick = { onImages(images.filterIndexed { index, _ -> index != i }) }) { Text(l[17] + " " + (i+1)) } } }
+        CustomKind.DATE_TIME -> CustomDateTime(value, onValue)
+        CustomKind.TABLE -> CustomTable(f, value, onValue, l)
+        CustomKind.SIGNATURE -> CustomSignature(images, store, onImages, onError, l)
+        CustomKind.PHOTOS -> CustomPhotos(images, store, onImages, onError, l)
         else -> OutlinedTextField(value,onValue, modifier = Modifier.fillMaxWidth(), singleLine = f.kind !in listOf(CustomKind.LONG_TEXT,CustomKind.TABLE), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (f.kind == CustomKind.NUMBER) androidx.compose.ui.text.input.KeyboardType.Decimal else androidx.compose.ui.text.input.KeyboardType.Text))
     }
 }

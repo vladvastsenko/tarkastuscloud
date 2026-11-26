@@ -37,5 +37,11 @@ internal class CustomStore(context: Context) {
         catch (e: Exception) { target.delete(); throw e }
         return target.name
     }
+    fun saveBitmap(bitmap: android.graphics.Bitmap): String {
+        val target = File(root, customId() + ".png")
+        try { target.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) } }
+        catch (e: Exception) { target.delete(); throw e }
+        return target.name
+    }
     fun image(name: String): File = File(root, File(name).name)
 }

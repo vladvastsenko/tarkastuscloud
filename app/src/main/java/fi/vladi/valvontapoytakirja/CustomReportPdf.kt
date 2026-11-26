@@ -29,6 +29,50 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             } while (rest.isNotEmpty())
         }
     }
+    fun table(f: CustomField, value: String) {
+        val columns = customColumns(f)
+        val rows = customRows(value,columns.size).filter { row -> row.any { it.isNotBlank() } }
+        if (rows.isEmpty()) return
+        // Split wide tables into readable groups of at most four columns.
+        for (start in columns.indices step 4) {
+            val end = minOf(start+4,columns.size)
+            val width = 510f/(end-start)
+            fun wrapCell(text: String): List<String> {
+                paint.textSize = 10f
+                return text.split("\n").flatMap { paragraph ->
+                    val lines = mutableListOf<String>(); var rest = paragraph
+                    do { val n = if (rest.isEmpty()) 0 else paint.breakText(rest,true,width-12f,null).coerceAtLeast(1); lines.add(rest.take(n)); rest = rest.drop(n) } while (rest.isNotEmpty())
+                    lines
+                }
+            }
+            fun drawRow(cells: List<List<String>>, offset: Int, count: Int) {
+                val height = count*14f+10f
+                cells.forEachIndexed { i,lines ->
+                    val x = 42f+i*width
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = 0.6f
+                    page.canvas.drawRect(x,y,x+width,y+height,paint)
+                    paint.style = Paint.Style.FILL; paint.textSize = 10f
+                    lines.drop(offset).take(count).forEachIndexed { j,t -> page.canvas.drawText(t,x+6,y+14+j*14,paint) }
+                }
+                y += height
+            }
+            val header = columns.subList(start,end).map { wrapCell(it) }
+            val headerCount = minOf(header.maxOf { it.size }, 8)
+            fun heading() { space(headerCount*14f+10f); drawRow(header,0,headerCount) }
+            heading()
+            for (row in rows) {
+                val cells = row.subList(start,end).map { wrapCell(it) }
+                val total = cells.maxOf { it.size }
+                var offset = 0
+                while (offset < total) {
+                    if (y+24 > 790f) { space(24f); heading() }
+                    val count = minOf(total-offset,((790f-y-10f)/14f).toInt().coerceAtLeast(1))
+                    drawRow(cells,offset,count); offset += count
+                }
+            }
+            y += 12f
+        }
+    }
     try {
         line(report.template.title,true)
         for (s in report.template.sections) {
@@ -38,7 +82,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             for (f in fields) {
                 line(f.label,true)
                 val value = report.values[f.id] ?: f.defaultValue
-                if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(value)
+                if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(value)
                 for (name in report.attachments[f.id].orEmpty()) {
                     val file = store.image(name)
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
