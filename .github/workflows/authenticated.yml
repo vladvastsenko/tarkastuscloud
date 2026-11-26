@@ -19,7 +19,7 @@ jobs:
       - name: Test Premium server policy
         run: |
           node --check premium-server/index.js
-          node --test premium-server/policy.test.js
+          node --test premium-server/*.test.js
       - name: Check Firebase secret availability
         env:
           CLOUD_GOOGLE_SERVICES_JSON: ${{ secrets.CLOUD_GOOGLE_SERVICES_JSON }}
