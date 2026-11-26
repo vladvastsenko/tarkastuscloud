@@ -21,6 +21,32 @@ import java.nio.file.Files
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class BackupRoundTripTest {
+    @Test fun managerExportsRetainedCopyAndRestoresThroughContentResolver() {
+        val context = org.robolectric.RuntimeEnvironment.getApplication()
+        val root = context.filesDir
+        val marker = File(root,"integration-marker.txt")
+        val base = Files.createTempDirectory("manager-roundtrip").toFile()
+        try {
+            marker.writeText("original")
+            val originalZip = File(base,"original.zip")
+            CloudBackupManager.backupToDocument(context, android.net.Uri.fromFile(originalZip))
+            marker.writeText("before restore")
+            val existing = CloudBackupManager.retainedCopies(context).map { it.name }.toSet()
+            CloudBackupManager.restoreFromUri(context, android.net.Uri.fromFile(originalZip))
+            assertEquals("original",marker.readText())
+            val retained = CloudBackupManager.retainedCopies(context).single { it.name !in existing }
+            assertEquals("before restore",File(retained,marker.name).readText())
+            val exported = File(base,"retained.zip")
+            CloudBackupManager.exportRetainedCopy(context,retained.name,android.net.Uri.fromFile(exported))
+            assertTrue(exported.length() > 0)
+            CloudBackupManager.restoreFromUri(context,android.net.Uri.fromFile(exported))
+            assertEquals("before restore",marker.readText())
+            assertTrue(retained.isDirectory)
+        } finally {
+            base.deleteRecursively()
+        }
+    }
+
     @Test fun roundTripAllReportModelsAndImages() {
         val base = Files.createTempDirectory("backup-roundtrip").toFile()
         try {
