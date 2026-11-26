@@ -146,6 +146,24 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             CustomPdfLanguage(d.pdfLanguage.ifBlank { AppLanguage.selected(context) }) { language -> document?.let { updateDocument(it.copy(pdfLanguage = language)) } }
             Text(d.template.title, style = MaterialTheme.typography.titleLarge)
             Row { Switch(d.useSharedSettings, { enabled -> document?.let { updateDocument(it.copy(useSharedSettings = enabled)) } }); Text(extra[0]) }
+            if (d.useSharedSettings) {
+                val repository = remember(context) { fi.vladi.valvontapoytakirja.data.ReportRepository(context) }
+                val customers = remember(repository) { repository.listCustomers() }
+                val sites = remember(repository, d.customerId) { repository.listSites(d.customerId.takeIf { it.isNotBlank() }) }
+                val inspectors = remember(repository) { repository.listInspectors() }
+                CustomSharedChoice("👥", d.customerText, customers.map { it.id to it.name }) { id ->
+                    val selected = customers.firstOrNull { it.id == id }
+                    document?.let { updateDocument(it.copy(customerId = id, customerText = selected?.let { p -> listOf(p.name,p.businessId,p.address,listOf(p.postalCode,p.city).filter { v -> v.isNotBlank() }.joinToString(" "),p.contactPerson,p.phone,p.email).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty(),siteId = "",siteText = "")) }
+                }
+                CustomSharedChoice("📍", d.siteText, sites.map { it.id to it.name }) { id ->
+                    val selected = sites.firstOrNull { it.id == id }
+                    document?.let { updateDocument(it.copy(siteId = id, siteText = selected?.let { p -> listOf(p.name,p.address).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty())) }
+                }
+                CustomSharedChoice("👷", d.inspectorText, inspectors.map { it.id to it.name }) { id ->
+                    val selected = inspectors.firstOrNull { it.id == id }
+                    document?.let { updateDocument(it.copy(inspectorId = id, inspectorText = selected?.let { p -> listOf(p.name,p.certificateNumber,p.phone,p.email).filter { v -> v.isNotBlank() }.joinToString("\n") }.orEmpty())) }
+                }
+            }
             for (section in d.template.sections) {
                 Text(section.title, style = MaterialTheme.typography.titleMedium)
                 for (field in section.fields) key(field.id) {
@@ -226,5 +244,17 @@ private fun CustomValueEditor(f: CustomField, value: String, images: List<String
         CustomKind.SIGNATURE -> CustomSignature(images, store, onImages, onError, l)
         CustomKind.PHOTOS -> CustomPhotos(images, store, onImages, onError, l, onImport)
         else -> OutlinedTextField(value,onValue, modifier = Modifier.fillMaxWidth(), singleLine = f.kind !in listOf(CustomKind.LONG_TEXT,CustomKind.TABLE), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (f.kind == CustomKind.NUMBER) androidx.compose.ui.text.input.KeyboardType.Decimal else androidx.compose.ui.text.input.KeyboardType.Text))
+    }
+}
+
+@Composable
+private fun CustomSharedChoice(label: String, selected: String, options: List<Pair<String,String>>, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) { Text(label + "  " + selected.substringBefore("\n").ifBlank { "—" }) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text("—") }, onClick = { open = false; onSelect("") })
+            options.forEach { (id, name) -> DropdownMenuItem(text = { Text(name) }, onClick = { open = false; onSelect(id) }) }
+        }
     }
 }
