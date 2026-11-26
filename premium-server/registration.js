@@ -12,14 +12,16 @@ function assertPurchase(purchase, session, now = Date.now()) {
 }
 async function issuePermit(db, token, session, purchase, now = Date.now()) {
   const result = assertPurchase(purchase,session,now);
-  const permit = secret();
+  const permit = require("node:crypto").createHmac("sha256",session).update("registration:"+token).digest("hex");
   const claim = db.collection("premiumRegistrationClaims").doc(hash(token));
   const ref = db.collection("premiumRegistrationPermits").doc(hash(permit));
   await db.runTransaction(async tx => {
     const existing = await tx.get(claim);
     if (existing.exists) {
       const c = existing.data();
-      if (c.uid || c.sessionHash !== hash(session)) throw new Error("purchase already claimed");
+      if (c.sessionHash !== hash(session)) throw new Error("purchase already claimed");
+      if (c.permitHash === hash(permit)) return;
+      if (c.uid) throw new Error("purchase already claimed");
       const old = await tx.get(db.collection("premiumRegistrationPermits").doc(c.permitHash));
       if (old.data()?.expiresAt > now && !old.data()?.used) throw new Error("permit still active");
       tx.update(claim,{permitHash:hash(permit)});
