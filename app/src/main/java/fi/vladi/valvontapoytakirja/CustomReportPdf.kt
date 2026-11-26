@@ -99,11 +99,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             if (rowIndex > 0 && (y+height > 790.01f || (f.separatePhotoPages && rowIndex % rows == 0))) { newPage(); line(title,true) }
             row.forEachIndexed { index,name ->
                 val file = store.image(name)
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(file.path,bounds)
-                var sample = 1
-                while (bounds.outWidth/sample > 1600 || bounds.outHeight/sample > 1600) sample *= 2
-                val bitmap = BitmapFactory.decodeFile(file.path,BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("Unreadable image")
+                val bitmap = decodeCustomImage(file,1600) ?: error("Unreadable image")
                 try {
                     val scale = minOf(width/bitmap.width,height/bitmap.height)
                     val w = bitmap.width*scale
@@ -153,11 +149,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
                 if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(if (f.kind == CustomKind.CHECKBOX) (if (value == "true") "☑" else "☐") else value)
                 for (name in report.attachments[f.id].orEmpty()) {
                     val file = store.image(name)
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeFile(file.path,bounds)
-                    var sample = 1
-                    while (bounds.outWidth/sample > 1600 || bounds.outHeight/sample > 1600) sample *= 2
-                    val bitmap = BitmapFactory.decodeFile(file.path,BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("Unreadable image")
+                    val bitmap = decodeCustomImage(file,1600) ?: error("Unreadable image")
                     try { val scale = minOf(510f/bitmap.width,300f/bitmap.height,1f); val w = bitmap.width*scale; val height = bitmap.height*scale; space(height+16); page.canvas.drawBitmap(bitmap,null,RectF(42f,y,42f+w,y+height),paint); y += height+16 } finally { bitmap.recycle() }
                 }
             }

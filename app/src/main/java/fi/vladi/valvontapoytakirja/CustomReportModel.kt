@@ -46,5 +46,8 @@ internal class CustomStore(context: Context) {
         catch (e: Exception) { target.delete(); throw e }
         return target.name
     }
-    fun image(name: String): File = File(root, File(name).name)
+    fun image(name: String): File {
+        require(name.matches(Regex("[0-9a-fA-F-]{36}\\.(image|png)"))) { "Invalid attachment name" }
+        return File(root,name)
+    }
 }

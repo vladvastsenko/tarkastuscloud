@@ -1,5 +1,7 @@
 package fi.vladi.valvontapoytakirja
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.graphics.Bitmap
@@ -77,36 +79,30 @@ internal fun CustomDateTime(value: String, onValue: (String)->Unit) {
 
 @Composable
 private fun CustomPreview(name: String, store: CustomStore) {
-    val bitmap = remember(name) {
-        val file = store.image(name)
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.path,bounds)
-        var sample = 1
-        while (bounds.outWidth/sample > 700 || bounds.outHeight/sample > 700) sample *= 2
-        BitmapFactory.decodeFile(file.path,BitmapFactory.Options().apply { inSampleSize = sample })
+    val bitmap by produceState<Bitmap?>(null,name) {
+        value = withContext(Dispatchers.IO) { runCatching { decodeCustomImage(store.image(name), 480) }.getOrNull() }
     }
-    if (bitmap != null) Image(bitmap.asImageBitmap(),contentDescription = null,modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp))
+    bitmap?.let { Image(it.asImageBitmap(),contentDescription = null,modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp)) }
 }
 @Composable
 internal fun CustomSignature(images: List<String>, store: CustomStore, onImages: (List<String>)->Unit, onError: ()->Unit, l: List<String>) {
     var strokes by remember { mutableStateOf(emptyList<SignatureStroke>()) }
-    images.firstOrNull()?.let { CustomPreview(it,store) }
-    SignaturePad(strokes) { next ->
-        strokes = next
-        if (next.isEmpty()) onImages(emptyList())
-        else runCatching {
+    if (images.isNotEmpty() && strokes.isEmpty()) images.firstOrNull()?.let { CustomPreview(it,store) }
+    SignaturePad(strokes) { next -> strokes = next }
+    if (strokes.isNotEmpty()) OutlinedButton(onClick = {
+        runCatching {
             val bitmap = Bitmap.createBitmap(1600,600,Bitmap.Config.ARGB_8888)
             try {
                 val canvas = Canvas(bitmap); canvas.drawColor(Color.WHITE)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
-                next.forEach { stroke ->
+                strokes.forEach { stroke ->
                     stroke.points.zipWithNext().forEach { (a,b) -> canvas.drawLine(a.x*1600,a.y*600,b.x*1600,b.y*600,paint) }
                     if (stroke.points.size == 1) stroke.points.first().let { canvas.drawCircle(it.x*1600,it.y*600,3f,paint) }
                 }
                 store.saveBitmap(bitmap)
             } finally { bitmap.recycle() }
-        }.onSuccess { onImages(listOf(it)) }.onFailure { onError() }
-    }
+        }.onSuccess { onImages(listOf(it)); strokes = emptyList() }.onFailure { onError() }
+    }) { Text(l[14]) }
     if (images.isNotEmpty()) TextButton(onClick = { strokes = emptyList(); onImages(emptyList()) }) { Text(l[17]) }
 }
 @Composable
