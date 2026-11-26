@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">PDF priekšskatījums</string>
     <string name="ui_preview_unavailable">Nav instalēta PDF skatīšanas programma</string>
     <string name="guest_continue">Turpināt bez reģistrācijas</string>
-    <string name="guest_explanation">Veidojiet un saglabājiet pārskatus ierīcē. Mākoņa sinhronizācijai jāpierakstās.</string>
+    <string name="guest_explanation">Reģistrācija nepieciešama tikai Premium lietošanai. Pārskatu izveide, rediģēšana un saglabāšana ierīcē ir bez maksas un bez konta. Premium nodrošina mākoņa sinhronizāciju un noņem reklāmas.</string>
     <string name="guest_local_notice">Viesa režīms: pārskati tiek glabāti tikai šajā ierīcē. Mākoņa sinhronizācijai jāpierakstās.</string>
     <string name="guest_sign_in">Pierakstīties / Reģistrēties</string>
     <string name="guest_cloud_required">Mākoņa sinhronizācijai jāpierakstās.</string>
