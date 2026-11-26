@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Premium server policy
+        run: |
+          node --check premium-server/index.js
+          node --test premium-server/policy.test.js
       - name: Check Firebase secret availability
         env:
           CLOUD_GOOGLE_SERVICES_JSON: ${{ secrets.CLOUD_GOOGLE_SERVICES_JSON }}
