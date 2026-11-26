@@ -180,6 +180,7 @@ object CloudBackupManager {
             val input = context.contentResolver.openInputStream(archiveUri)
                 ?: error("Cannot open backup")
             extractBackup(input, staging, MAX_ENTRIES, MAX_UNPACKED_BYTES)
+            relocateBackupPaths(staging, original)
             // Keep the current local data until the complete archive has been extracted and validated.
             val current = context.filesDir
             val previous = File(current.parentFile, "tarkastus_restore_previous")

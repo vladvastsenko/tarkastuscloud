@@ -8,11 +8,18 @@ import fi.vladi.valvontapoytakirja.CustomKind
 import kotlinx.serialization.json.Json
 import org.junit.Test
 import org.junit.Assert.*
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
+import org.robolectric.annotation.Config
 import java.io.File
 import java.nio.file.Files
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class BackupRoundTripTest {
     @Test fun roundTripAllReportModelsAndImages() {
         val base = Files.createTempDirectory("backup-roundtrip").toFile()
@@ -22,10 +29,10 @@ class BackupRoundTripTest {
             fun file(path: String) = File(root,path).apply { parentFile?.mkdirs() }
             val jpeg = file("tarkastus_reports/test/photos/photo.jpg")
             val png = file("settings/signature.png")
-            val image = BufferedImage(32,24,BufferedImage.TYPE_INT_RGB)
-            image.setRGB(5,5,0x123456)
-            assertTrue(ImageIO.write(image,"jpeg",jpeg))
-            assertTrue(ImageIO.write(image,"png",png))
+            val image = Bitmap.createBitmap(32,24,Bitmap.Config.ARGB_8888)
+            image.setPixel(5,5,0xff123456.toInt())
+            jpeg.outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.JPEG,90,it)) }
+            png.outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,it)) }
             val settings = AppSettings(inspectorName="Inspector",signatureImagePath=png.path,headerText="Header")
             file("app_settings.json").writeText(Json.encodeToString(AppSettings.serializer(),settings))
             val reports = ReportTypes.ids.map { type ->
@@ -48,7 +55,7 @@ class BackupRoundTripTest {
             assertEquals(settings,Json.decodeFromString(AppSettings.serializer(),File(restored,"app_settings.json").readText()))
             assertEquals(doc,Json.decodeFromString(CustomDocument.serializer(),File(restored,"custom_reports/document.json").readText()))
             for (original in listOf(jpeg,png)) {
-                val decoded = ImageIO.read(File(restored,original.relativeTo(root).path))
+                val decoded = BitmapFactory.decodeFile(File(restored,original.relativeTo(root).path).path) ?: error("Image decode failed")
                 assertEquals(32,decoded.width); assertEquals(24,decoded.height)
             }
         } finally { base.deleteRecursively() }
