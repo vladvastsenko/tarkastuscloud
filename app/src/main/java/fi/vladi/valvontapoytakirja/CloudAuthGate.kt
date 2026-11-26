@@ -73,13 +73,12 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             .build()
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            busy = false
-        } else {
+        run {
             try {
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
-                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+                val token = account.idToken ?: error("Missing Google ID token")
+                val credential = GoogleAuthProvider.getCredential(token, null)
                 auth.signInWithCredential(credential).addOnCompleteListener { task ->
                     busy = false
                     if (task.isSuccessful) {
@@ -93,7 +92,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
                 }
             } catch (exception: Exception) {
                 busy = false
-                error = localizedAuthError(context, exception, R.string.google_failed)
+                error = localizedAuthError(context, exception, R.string.google_failed) + (if (exception is ApiException) " (${exception.statusCode})" else "")
             }
         }
     }
