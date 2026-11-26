@@ -6,7 +6,7 @@ import android.graphics.pdf.PdfDocument
 import fi.vladi.tarkastuspoytakirja.storage.SharedDocumentsArchive
 import java.io.File
 
-internal fun exportCustomPdf(context: Context, store: CustomStore, report: CustomDocument) {
+internal fun exportCustomPdf(context: Context, store: CustomStore, report: CustomDocument): android.net.Uri {
     val settings = fi.vladi.valvontapoytakirja.data.ReportRepository(context).loadSettings()
     val labels = customLabels(report.pdfLanguage.ifBlank { fi.vladi.tarkastuspoytakirja.AppLanguage.selected(context) })
     val pdf = PdfDocument()
@@ -188,6 +188,6 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         }
         finish()
         val file = File.createTempFile("custom_", ".pdf", context.cacheDir)
-        try { file.outputStream().use { pdf.writeTo(it) }; check(SharedDocumentsArchive.archiveFile(context,file,"Raportit/PDF","custom_"+report.id+"_"+java.util.UUID.randomUUID()+".pdf","application/pdf", overwrite = false) != null) } finally { file.delete() }
+        try { file.outputStream().use { pdf.writeTo(it) }; return checkNotNull(SharedDocumentsArchive.archiveFile(context,file,"Raportit/PDF","custom_"+report.id+"_"+java.util.UUID.randomUUID()+".pdf","application/pdf", overwrite = false)) } finally { file.delete() }
     } finally { pdf.close() }
 }
