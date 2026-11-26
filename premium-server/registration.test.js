@@ -39,3 +39,12 @@ test("server bound purchase hash verifies for reserved UID",()=>{
  assert.equal(assess(purchase(s),uid,1,hash(s)).eligible,true);
  assert.throws(()=>assess(purchase(s),uid,1,hash(secret())));
 });
+
+test("expired permit requires fresh verification and correct session",async()=>{
+ const {reserveAccount}=require("./registration"),db=database(),s=secret();
+ const p=await issuePermit(db,"token",s,purchase(s),1);
+ await assert.rejects(reserveAccount(db,p,s,"a@example.com",600002));
+ await assert.rejects(reserveAccount(db,p,secret(),"a@example.com",600002,660002));
+ await assert.rejects(reserveAccount(db,p,s,"a@example.com",600002,600002));
+ assert.match(await reserveAccount(db,p,s,"a@example.com",600002,660002),/^premium_/);
+});
