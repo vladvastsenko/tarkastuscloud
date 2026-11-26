@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -126,6 +128,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text("Tarkastus Cloud", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.guest_explanation), style = MaterialTheme.typography.bodyMedium)
             Box {
                 OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(AppLanguage.flaggedLabel(AppLanguage.selected(context)) + " ▾")
@@ -216,13 +219,12 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.forgot_password))
             }
-            OutlinedButton(onClick = {
+            Button(onClick = {
                 guestPrefs.edit().putBoolean("enabled", true).apply()
                 guest = true
-            }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC8E6C9), contentColor = Color(0xFF173D20)), modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.guest_continue))
             }
-            Text(stringResource(R.string.guest_explanation), style = MaterialTheme.typography.bodySmall)
             if (busy) CircularProgressIndicator()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
