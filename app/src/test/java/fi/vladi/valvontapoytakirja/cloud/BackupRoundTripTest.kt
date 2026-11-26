@@ -44,7 +44,7 @@ class BackupRoundTripTest {
             val field = CustomField(id="photo",kind=CustomKind.PHOTOS)
             val doc = CustomDocument(template=CustomTemplate(sections=listOf(CustomSection(fields=listOf(field)))),attachments=mapOf("photo" to listOf("photo.image")))
             jpeg.copyTo(file("custom_reports/photo.image"))
-            file("custom_reports/document.json").writeText(Json.encodeToString(CustomDocument.serializer(),doc))
+            fi.vladi.valvontapoytakirja.CustomStore(File(root,"custom_reports")).saveDocument(doc)
             val archive = File(base,"backup.zip")
             writeBackupArchive(root,archive)
             extractBackup(archive.inputStream(),restored)
@@ -53,7 +53,7 @@ class BackupRoundTripTest {
             }
             reports.forEach { assertEquals(it,Json.decodeFromString(InspectionReport.serializer(),File(restored,"tarkastus_reports/${it.id}.json").readText())) }
             assertEquals(settings,Json.decodeFromString(AppSettings.serializer(),File(restored,"app_settings.json").readText()))
-            assertEquals(doc,Json.decodeFromString(CustomDocument.serializer(),File(restored,"custom_reports/document.json").readText()))
+            assertEquals(doc,fi.vladi.valvontapoytakirja.CustomStore(File(restored,"custom_reports")).load().documents.single())
             for (original in listOf(jpeg,png)) {
                 val decoded = BitmapFactory.decodeFile(File(restored,original.relativeTo(root).path).path) ?: error("Image decode failed")
                 assertEquals(32,decoded.width); assertEquals(24,decoded.height)

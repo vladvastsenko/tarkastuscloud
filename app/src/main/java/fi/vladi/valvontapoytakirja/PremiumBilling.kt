@@ -20,7 +20,7 @@ internal class PremiumBilling(context: Context, onPurchases: (BillingResult, Lis
 
     fun queryPurchases(onResult: (BillingResult, List<Purchase>) -> Unit) {
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder()
-            .setProductType(BillingClient.ProductType.SUBS).build()) { result, purchases ->
+            .setProductType(BillingClient.ProductType.SUBS).includeSuspendedSubscriptions(true).build()) { result, purchases ->
             onResult(result, purchases.filter { PREMIUM_PRODUCT in it.products })
         }
     }

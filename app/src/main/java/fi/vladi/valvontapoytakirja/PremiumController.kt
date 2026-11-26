@@ -47,12 +47,13 @@ internal class PremiumController {
                 subscriptionState = if (result.responseCode != BillingClient.BillingResponseCode.OK) SubscriptionState.UNKNOWN else if (purchases.any { it.purchaseState == Purchase.PurchaseState.PENDING && it.accountIdentifiers?.obfuscatedAccountId == account?.let(::premiumAccountHash) }) SubscriptionState.PENDING else SubscriptionState.FREE
                 PremiumAccess.clear(); busy = false; active = false; error = result.responseCode != BillingClient.BillingResponseCode.OK; return@queryPurchases
             }
+            if (purchase.isSuspended) { PremiumAccess.clear(); active = false; subscriptionState = SubscriptionState.UNKNOWN }
             val start = SystemClock.elapsedRealtime()
             verifyPremiumPurchase(purchase) { verified ->
                 if (epoch == generation && account == uid) {
                     val duration = ((verified?.expiresAt ?: 0L) - System.currentTimeMillis()).coerceIn(0L, 300000L)
                     deadline = start + duration
-                    active = verified?.permitsPremium(account, System.currentTimeMillis()) == true && SystemClock.elapsedRealtime() < deadline
+                    active = !purchase.isSuspended && verified?.permitsPremium(account, System.currentTimeMillis()) == true && SystemClock.elapsedRealtime() < deadline
                     subscriptionState = verified?.state ?: SubscriptionState.UNKNOWN
                     PremiumAccess.update(if (active) verified else null, deadline)
                     error = verified == null

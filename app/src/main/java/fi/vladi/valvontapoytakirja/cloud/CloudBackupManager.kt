@@ -55,6 +55,23 @@ object CloudBackupManager {
 
     }
 
+    fun retainedCopies(context: Context): List<File> =
+        File(context.applicationInfo.dataDir).listFiles()?.filter {
+            it.isDirectory && it.name.matches(Regex("tarkastus_retained_[0-9a-f-]{36}")) &&
+                it.canonicalFile.parentFile == File(context.applicationInfo.dataDir).canonicalFile
+        }?.sortedByDescending { it.lastModified() }.orEmpty()
+
+    fun exportRetainedCopy(context: Context, name: String, uri: Uri) {
+        val root = retainedCopies(context).firstOrNull { it.name == name } ?: error("Copy not found")
+        val temp = File.createTempFile("retained-", ".zip", context.cacheDir)
+        try {
+            writeBackupArchive(root, temp, MAX_ENTRIES, MAX_UNPACKED_BYTES)
+            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                temp.inputStream().use { it.copyTo(out) }
+            } ?: error("Cannot open destination")
+        } finally { temp.delete() }
+    }
+
     fun backupToDocument(context: Context, uri: Uri) {
         val temp = File.createTempFile("local-backup-", ".zip", context.cacheDir)
         try {

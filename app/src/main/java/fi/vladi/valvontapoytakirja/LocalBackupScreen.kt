@@ -1,5 +1,8 @@
 package fi.vladi.valvontapoytakirja
 import android.net.Uri
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,12 +53,29 @@ internal fun LocalBackupScreen(onBack: () -> Unit) {
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) operate { CloudBackupManager.backupToDocument(context, uri) }
     }
+    val retained = remember { CloudBackupManager.retainedCopies(context) }
+    var selectedCopy by rememberSaveable { mutableStateOf("") }
+    val exportCopy = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null && selectedCopy.isNotBlank()) {
+            val name = selectedCopy
+            operate { CloudBackupManager.exportRetainedCopy(context,name,uri) }
+        }
+    }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restore = uri }
     BackHandler { if (!busy) onBack() }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(l[0], style = MaterialTheme.typography.headlineMedium)
         Button(onClick = { save.launch("TarkastusCloud_backup_${System.currentTimeMillis()}.zip") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(l[1]) }
         OutlinedButton(onClick = { open.launch(arrayOf("application/zip","application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(l[2]) }
+        retained.forEach { copy ->
+            OutlinedButton(onClick = {
+                selectedCopy = copy.name
+                exportCopy.launch("TarkastusCloud_${copy.name}.zip")
+            }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                Text(l[1] + " · " + recoveryLabels(AppLanguage.selected(context))[0] + " · " +
+                    java.text.DateFormat.getDateTimeInstance().format(java.util.Date(copy.lastModified())) + " · " + copy.name.takeLast(8))
+            }
+        }
         if (busy) CircularProgressIndicator()
         Text(status)
         TextButton(onClick = onBack, enabled = !busy) { Text(stringResource(R.string.back)) }
