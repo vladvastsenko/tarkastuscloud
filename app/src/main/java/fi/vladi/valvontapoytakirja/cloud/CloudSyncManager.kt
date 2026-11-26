@@ -66,6 +66,7 @@ object CloudSyncManager {
 
     @Synchronized
     fun sync(context: Context, treeUri: Uri): Result {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val selectedRoot = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(selectedRoot.isDirectory && selectedRoot.canWrite()) { "Valittuun kansioon ei voi tallentaa." }

@@ -26,6 +26,7 @@ object CloudBackupManager {
     data class BackupFile(val uri: Uri, val name: String, val sizeBytes: Long, val lastModified: Long)
 
     fun listBackups(context: Context, treeUri: Uri): List<BackupFile> {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val folder = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(folder.isDirectory && folder.canRead()) { "Valitun Google Drive -kansion sisältöä ei voi lukea." }
@@ -95,6 +96,7 @@ object CloudBackupManager {
     }
 
     fun backupToFolder(context: Context, treeUri: Uri): String {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val folder = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(folder.isDirectory && folder.canWrite()) {
@@ -177,6 +179,11 @@ object CloudBackupManager {
             }
         }
         return copied
+    }
+
+    fun restoreCloudFromUri(context: Context, archiveUri: Uri): String {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
+        return restoreFromUri(context, archiveUri)
     }
 
     fun restoreFromUri(context: Context, archiveUri: Uri): String {

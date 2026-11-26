@@ -64,5 +64,7 @@ internal fun extractBackup(input: InputStream, staging: File, maxEntries: Int = 
             }
             check(manifest)
         }
+    } catch (e: java.util.zip.ZipException) {
+        throw IllegalStateException("Invalid ZIP archive", e)
     } finally { archive.delete() }
 }

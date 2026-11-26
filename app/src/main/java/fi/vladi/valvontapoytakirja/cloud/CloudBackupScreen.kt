@@ -290,7 +290,7 @@ fun CloudBackupScreen(onBack: () -> Unit) {
                         status = try {
                             check(tree != null) { context.getString(R.string.cloud_private_backup_invalid) }
                             val safetyCopy = withContext(Dispatchers.IO) { CloudBackupManager.backupToFolder(context, tree) }
-                            withContext(Dispatchers.IO) { CloudBackupManager.restoreFromUri(context, backupToRestore.uri) }
+                            withContext(Dispatchers.IO) { CloudBackupManager.restoreCloudFromUri(context, backupToRestore.uri) }
                             restoreCompleted = true
                             context.getString(R.string.cloud_restore_safety_copy, context.getString(R.string.cloud_restore_success), safetyCopy)
                         } catch (error: Throwable) {

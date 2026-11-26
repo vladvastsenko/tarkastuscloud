@@ -28,7 +28,7 @@ internal class PremiumController {
     var billing: PremiumBilling? = null
     private var generation = 0
     private var deadline = 0L
-    fun invalidate() { generation++; active = false; busy = false; deadline = 0L }
+    fun invalidate() { PremiumAccess.clear(); generation++; active = false; busy = false; deadline = 0L }
     fun tick() { if (SystemClock.elapsedRealtime() >= deadline) active = false }
     fun refresh() {
         val client = billing ?: return
@@ -41,7 +41,7 @@ internal class PremiumController {
             if (epoch != generation) return@queryPurchases
             val purchase = purchases.firstOrNull { it.purchaseState == Purchase.PurchaseState.PURCHASED && it.accountIdentifiers?.obfuscatedAccountId == account?.let(::premiumAccountHash) }
             if (result.responseCode != BillingClient.BillingResponseCode.OK || purchase == null) {
-                busy = false; active = false; error = result.responseCode != BillingClient.BillingResponseCode.OK; return@queryPurchases
+                PremiumAccess.clear(); busy = false; active = false; error = result.responseCode != BillingClient.BillingResponseCode.OK; return@queryPurchases
             }
             val start = SystemClock.elapsedRealtime()
             verifyPremiumPurchase(purchase) { verified ->
@@ -49,6 +49,7 @@ internal class PremiumController {
                     val duration = ((verified?.expiresAt ?: 0L) - System.currentTimeMillis()).coerceIn(0L, 300000L)
                     deadline = start + duration
                     active = verified != null && SystemClock.elapsedRealtime() < deadline
+                    PremiumAccess.update(if (active) verified else null, deadline)
                     error = verified == null
                     busy = false
                 }
