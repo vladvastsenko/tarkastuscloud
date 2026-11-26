@@ -43,7 +43,8 @@ data class InspectionReport(
     val reportType: String = "inspection",
     val documentTitle: String = "",
     val checklist: List<ChecklistItem> = emptyList(),
-    val measurements: List<MeasurementItem> = emptyList()
+    val measurements: List<MeasurementItem> = emptyList(),
+    val useSharedSettings: Boolean = true
 )
 
 @Serializable
