@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import fi.vladi.tarkastuspoytakirja.AppLanguage
 
+private val customSaveScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Main.immediate)
+
 private fun <T> List<T>.replaceAt(i: Int, v: T) = toMutableList().apply { this[i] = v }.toList()
 private fun <T> List<T>.moveAt(i: Int, delta: Int): List<T> = if (i+delta !in indices) this else toMutableList().apply { add(i+delta, removeAt(i)) }
 @Composable
@@ -38,16 +40,27 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val writer = remember { kotlinx.coroutines.sync.Mutex() }
     var pendingWrites by remember { mutableStateOf(0) }
-    fun enqueue(action: () -> Unit, done: () -> Unit = {}) {
-        pendingWrites++
-        scope.launch {
-            try {
-                writer.lock()
-                try { withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { action() } }
-                finally { writer.unlock() }
-                done()
-            } catch (e: Exception) { message = l[24] }
-            finally { pendingWrites-- }
+    val queued = remember { linkedMapOf<String, suspend () -> Unit>() }
+    var worker by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    fun enqueue(action: () -> Unit, key: String = customId(), done: () -> Unit = {}) {
+        queued.remove(key)
+        queued[key] = { withContext(Dispatchers.IO) { action() }; done() }
+        pendingWrites = queued.size + 1
+        if (worker?.isActive == true) return
+        worker = customSaveScope.launch {
+            while (queued.isNotEmpty()) {
+                val entry = queued.entries.first()
+                val task = entry.value
+                queued.remove(entry.key)
+                try {
+                    writer.lock()
+                    try { task() } finally { writer.unlock() }
+                } catch (e: Exception) {
+                    message = l[24]
+                }
+                pendingWrites = queued.size + 1
+            }
+            pendingWrites = 0
         }
     }
     fun persist(next: CustomLibrary) {
@@ -63,13 +76,13 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(documents = library.documents.filterNot { it.id == next.id } + next)
         library = updated; document = next
-        enqueue({ store.saveDocument(next) })
+        enqueue({ store.saveDocument(next) }, key = "document:" + next.id)
     }
     fun updateTemplate(next: CustomTemplate) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(templates = library.templates.filterNot { it.id == next.id } + next)
         library = updated; template = next
-        enqueue({ store.saveTemplate(next) })
+        enqueue({ store.saveTemplate(next) }, key = "template:" + next.id)
     }
     var busy by remember { mutableStateOf(false) }
     fun back() {
@@ -79,12 +92,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (d != null) {
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
-            enqueue({ store.saveDocument(d) }) { library = next; document = null }
+            enqueue({ store.saveDocument(d) }) { if (document == d) { library = next; document = null } }
         } else if (t != null) {
             if (t.title.isBlank()) { template = null; return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
-            enqueue({ store.saveTemplate(t) }) { library = next; template = null }
+            enqueue({ store.saveTemplate(t) }) { if (template == t) { library = next; template = null } }
         } else onBack()
     }
     BackHandler { back() }
@@ -112,7 +125,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                 !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
             Button(onClick = { persist(library.copy(documents = library.documents.filterNot { it.id == d.id } + d)) }) { Text(l[14]) }
-            Button(enabled = !busy, onClick = {
+            Button(enabled = !busy && pendingWrites == 0, onClick = {
                 if (!valid()) message = l[22] else {
                     busy = true
                     scope.launch {
