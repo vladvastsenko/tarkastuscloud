@@ -21,6 +21,7 @@ android {
     defaultConfig {
         applicationId = "fi.vladi.tarkastuscloud"
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         targetSdk = 35
         versionCode = 1
         versionName = if (preview) "0.1.0-preview" else "0.1.0"
@@ -65,6 +66,8 @@ android {
 }
 
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     implementation(project(":tarkastus"))
