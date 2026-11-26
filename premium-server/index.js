@@ -66,7 +66,7 @@ exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInst
     const db = getFirestore();
     const client = await auth.getClient();
     const {data} = await client.request({url:base+"/subscriptionsv2/tokens/"+encodeURIComponent(purchaseToken),timeout:15000});
-    assertPurchase(data,session);
+    const verified = assertPurchase(data,session);
     const p = (await db.collection("premiumRegistrationPermits").doc(hash(permit)).get()).data();
     if (!p || p.claimId !== hash(purchaseToken)) throw new Error("purchase mismatch");
     const address = email.trim().toLowerCase();
@@ -78,7 +78,7 @@ exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInst
     });
     if (existingEmail && existingEmail.uid !== claim?.uid)
       throw new HttpsError("already-exists","Email already registered");
-    const uid = await reserveAccount(db,permit,session,address);
+    const uid = await reserveAccount(db,permit,session,address,Date.now(),Math.min(verified.expiresAt,Date.now()+60000));
     try {
       await admin.createUser({uid,email:address,password,emailVerified:false});
     } catch (e) {
