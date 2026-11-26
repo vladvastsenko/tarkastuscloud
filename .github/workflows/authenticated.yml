@@ -62,7 +62,7 @@ jobs:
             echo "::warning::No permanent Cloud signing key configured; debug APK may not update previous builds."
           fi
           for attempt in 1 2 3; do
-            if gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon; then break; fi
+            if gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon -PpremiumCheckout=false -PproductionAds=false; then break; fi
             if [ "$attempt" = 3 ]; then exit 1; fi
             sleep $((attempt * 30))
           done
