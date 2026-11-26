@@ -88,7 +88,14 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     it.accountIdentifiers?.obfuscatedAccountId == registrationPurchase.accountHash
                 }
             }
-            val billing = PremiumBilling(context) { _, purchases -> busy = false; accept(purchases) }
+            val billing = PremiumBilling(context) { result, purchases ->
+                busy = false
+                if (result.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK) {
+                    accept(purchases)
+                } else if (result.responseCode != com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED) {
+                    error = context.getString(R.string.auth_failed)
+                }
+            }
             registrationBilling = billing
             billing.connect { result ->
                 billingReady = result.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK
@@ -205,7 +212,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 error = null
                 message = null
                 val address = email.trim()
-                if (address.isBlank() || password.length < 6) {
+                if (address.isBlank() || password.length < (if (register) 8 else 6)) {
                     busy = false
                     error = context.getString(R.string.password_short)
                 } else {
