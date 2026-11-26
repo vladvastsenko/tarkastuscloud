@@ -28,9 +28,25 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     var template by remember { mutableStateOf<CustomTemplate?>(null) }
     var document by remember { mutableStateOf<CustomDocument?>(null) }
     var message by remember { mutableStateOf(if (loaded.isFailure) l[24] else "") }
+    val scope = rememberCoroutineScope()
+    val writer = remember { kotlinx.coroutines.sync.Mutex() }
+    var pendingWrites by remember { mutableStateOf(0) }
+    fun enqueue(action: () -> Unit, done: () -> Unit = {}) {
+        pendingWrites++
+        scope.launch {
+            try {
+                writer.lock()
+                try { withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { action() } }
+                finally { writer.unlock() }
+                done()
+            } catch (e: Exception) { message = l[24] }
+            finally { pendingWrites-- }
+        }
+    }
     fun persist(next: CustomLibrary) {
         if (loaded.isFailure) { message = l[24]; return }
-        runCatching { store.save(next) }.onSuccess { library = next; message = l[23] }.onFailure { message = l[24] }
+        library = next
+        enqueue({ store.save(next) }) { message = l[23] }
     }
     LaunchedEffect(Unit) {
         if (loaded.isSuccess) withContext(Dispatchers.IO) { runCatching { store.cleanUnused(loaded.getOrThrow()) } }
@@ -39,28 +55,29 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     fun updateDocument(next: CustomDocument) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(documents = library.documents.filterNot { it.id == next.id } + next)
-        runCatching { store.save(updated) }.onSuccess { library = updated; document = next }.onFailure { message = l[24] }
+        library = updated; document = next
+        enqueue({ store.saveDocument(next) })
     }
     fun updateTemplate(next: CustomTemplate) {
         if (loaded.isFailure) { message = l[24]; return }
         val updated = library.copy(templates = library.templates.filterNot { it.id == next.id } + next)
-        runCatching { store.save(updated) }.onSuccess { library = updated; template = next }.onFailure { message = l[24] }
+        library = updated; template = next
+        enqueue({ store.saveTemplate(next) })
     }
     var busy by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     fun back() {
-        if (busy) return
+        if (busy || pendingWrites > 0) return
         val d = document
         val t = template
         if (d != null) {
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
-            runCatching { store.save(next) }.onSuccess { library = next; document = null }.onFailure { message = l[24] }
+            enqueue({ store.saveDocument(d) }) { library = next; document = null }
         } else if (t != null) {
             if (t.title.isBlank()) { template = null; return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
-            runCatching { store.save(next) }.onSuccess { library = next; template = null }.onFailure { message = l[24] }
+            enqueue({ store.saveTemplate(t) }) { library = next; template = null }
         } else onBack()
     }
     BackHandler { back() }
@@ -68,6 +85,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         Text(l[0], style = MaterialTheme.typography.headlineSmall)
         OutlinedButton(onClick = { back() }) { Text(l[16]) }
         if (message.isNotBlank()) Text(message)
+        if (pendingWrites > 0) LinearProgressIndicator(Modifier.fillMaxWidth())
         val d = document
         val t = template
         if (d != null) {

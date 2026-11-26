@@ -25,16 +25,50 @@ internal class CustomStore(context: Context) {
     private val root = File(context.filesDir, "custom_reports").apply { mkdirs() }
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    fun load(): CustomLibrary = try { json.decodeFromString<CustomLibrary>(file.readFully().decodeToString()) } catch (e: java.io.FileNotFoundException) { if (file.baseFile.exists()) throw e else CustomLibrary() }
-    fun save(value: CustomLibrary) {
-        val out = file.startWrite()
-        try { out.write(json.encodeToString(value).encodeToByteArray()); file.finishWrite(out) }
-        catch (e: Exception) { file.failWrite(out); throw e }
+    private val records = File(root,"records").apply { mkdirs() }
+    private val marker = AtomicFile(File(records,"ready"))
+    private fun readLegacy(): CustomLibrary = try {
+        json.decodeFromString<CustomLibrary>(file.readFully().decodeToString())
+    } catch (e: java.io.FileNotFoundException) {
+        if (file.baseFile.exists() || File(root,"library.json.bak").exists()) throw e else CustomLibrary()
+    }
+    private fun write(target: AtomicFile, bytes: ByteArray) {
+        val out = target.startWrite()
+        try { out.write(bytes); target.finishWrite(out) }
+        catch (e: Exception) { target.failWrite(out); throw e }
+    }
+    private fun record(kind: String,id: String): AtomicFile {
+        val key = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
+        return AtomicFile(File(records,"$kind-$key.json"))
+    }
+    @Synchronized fun load(): CustomLibrary {
+        if (!marker.baseFile.exists()) {
+            val legacy = readLegacy()
+            legacy.templates.forEach { saveTemplate(it) }
+            legacy.documents.forEach { saveDocument(it) }
+            write(marker,byteArrayOf(1))
+            return legacy
+        }
+        val files = records.listFiles() ?: error("Cannot list records")
+        val names = files.map { it.name.removeSuffix(".bak") }.distinct()
+        val templates = names.filter { it.startsWith("t-") && it.endsWith(".json") }.map {
+            json.decodeFromString<CustomTemplate>(AtomicFile(File(records,it)).readFully().decodeToString())
+        }
+        val documents = names.filter { it.startsWith("d-") && it.endsWith(".json") }.map {
+            json.decodeFromString<CustomDocument>(AtomicFile(File(records,it)).readFully().decodeToString())
+        }
+        return CustomLibrary(templates,documents)
+    }
+    @Synchronized fun saveDocument(value: CustomDocument) = write(record("d",value.id),json.encodeToString(value).encodeToByteArray())
+    @Synchronized fun saveTemplate(value: CustomTemplate) = write(record("t",value.id),json.encodeToString(value).encodeToByteArray())
+    @Synchronized fun save(value: CustomLibrary) {
+        value.templates.forEach { saveTemplate(it) }
+        value.documents.forEach { saveDocument(it) }
     }
     // Called only on opening the editor, before any new attachments are created.
     // Retain recent unreferenced files to tolerate interrupted imports or recovery.
     fun cleanUnused(value: CustomLibrary) {
-        val used = value.documents.flatMap { it.attachments.values.flatten() }.toSet()
+        val used = (value.documents + readLegacy().documents).flatMap { it.attachments.values.flatten() }.toSet()
         val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
         root.listFiles()?.forEach { candidate ->
             if (candidate.isFile && candidate.name.matches(Regex("[0-9a-fA-F-]{36}\\.(image|png)")) &&

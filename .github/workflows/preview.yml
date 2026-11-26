@@ -30,10 +30,27 @@ jobs:
           file app/src/main/res/drawable/icon.png app/src/main/res/drawable/tarkastuscloud.png
           python3 -c 'from pathlib import Path; assert all(Path(p).read_bytes().startswith(bytes.fromhex("89504e470d0a1a0a")) for p in ["app/src/main/res/drawable/icon.png","app/src/main/res/drawable/tarkastuscloud.png"])'
       - run: python3 scripts/check-cloud-locales.py
-      - run: gradle :app:assembleDebug -PofflinePreview=true --no-daemon
-      - name: Verify APK signature and record certificate
+      - name: Build with dedicated Cloud signing key when configured
+        env:
+          CLOUD_KEYSTORE_B64: ${{ secrets.CLOUD_KEYSTORE_B64 }}
+          CLOUD_KEYSTORE_PASSWORD: ${{ secrets.CLOUD_KEYSTORE_PASSWORD }}
+          CLOUD_KEY_ALIAS: ${{ secrets.CLOUD_KEY_ALIAS }}
         run: |
           set -eu
+          if [ -n "$CLOUD_KEYSTORE_B64" ]; then
+            test -n "$CLOUD_KEYSTORE_PASSWORD"
+            test -n "$CLOUD_KEY_ALIAS"
+            export CLOUD_KEYSTORE_PATH="$RUNNER_TEMP/cloud-signing.p12"
+            umask 077
+            printf '%s' "$CLOUD_KEYSTORE_B64" | base64 --decode > "$CLOUD_KEYSTORE_PATH"
+            trap 'rm -f "$CLOUD_KEYSTORE_PATH"' EXIT
+          else
+            echo "::warning::No permanent Cloud signing key configured; debug APK may not update previous builds."
+          fi
+          gradle :app:assembleDebug -PofflinePreview=true --no-daemon
+      - name: Verify APK signature and record certificate
+        run: |
+          set -euo pipefail
           signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           test -n "$signer"
           for apk in app/build/outputs/apk/debug/*.apk; do
