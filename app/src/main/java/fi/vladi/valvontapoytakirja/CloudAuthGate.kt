@@ -75,6 +75,28 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
         registrationCheckout = false
         guestPrefs.edit().remove("registration_checkout").apply()
     }
+    val registrationPurchase = remember { PremiumRegistrationPurchase(context) }
+    var registrationBilling by remember { mutableStateOf<PremiumBilling?>(null) }
+    var paidPurchase by remember { mutableStateOf<com.android.billingclient.api.Purchase?>(null) }
+    var billingReady by remember { mutableStateOf(false) }
+    androidx.compose.runtime.DisposableEffect(register) {
+        if (register && BuildConfig.PREMIUM_CHECKOUT_ENABLED) {
+            fun accept(purchases: List<com.android.billingclient.api.Purchase>) {
+                paidPurchase = purchases.firstOrNull {
+                    it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PURCHASED &&
+                    !it.isSuspended && PREMIUM_PRODUCT in it.products &&
+                    it.accountIdentifiers?.obfuscatedAccountId == registrationPurchase.accountHash
+                }
+            }
+            val billing = PremiumBilling(context) { _, purchases -> busy = false; accept(purchases) }
+            registrationBilling = billing
+            billing.connect { result ->
+                billingReady = result.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK
+                if (billingReady) billing.queryPurchases { _, purchases -> accept(purchases) }
+            }
+            onDispose { billing.close(); registrationBilling = null; billingReady = false; paidPurchase = null }
+        } else onDispose {}
+    }
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
     val options = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -187,7 +209,23 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     busy = false
                     error = context.getString(R.string.password_short)
                 } else {
-                    val task = if (register) auth.createUserWithEmailAndPassword(address, password) else auth.signInWithEmailAndPassword(address, password)
+                    if (register && paidPurchase == null) {
+                        val billing = registrationBilling
+                        val activity = context as? android.app.Activity
+                        if (!billingReady || billing == null || activity == null) {
+                            busy = false
+                            error = context.getString(R.string.auth_failed)
+                        } else billing.queryOffer { _, details, offer ->
+                            if (details == null || offer == null ||
+                                registrationPurchase.launch(billing, activity, details, offer).responseCode != com.android.billingclient.api.BillingClient.BillingResponseCode.OK) {
+                                busy = false
+                                error = context.getString(R.string.auth_failed)
+                            }
+                        }
+                        return@Button
+                    }
+                    fun signIn() {
+                    val task = auth.signInWithEmailAndPassword(address, password)
                     task.addOnCompleteListener { result ->
                         busy = false
                         if (result.isSuccessful) {
@@ -195,15 +233,21 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                             guestPrefs.edit().putBoolean("enabled", false).apply()
                             signedIn = true
                             if (register) {
-                                registrationCheckout = true
-                                guestPrefs.edit().putBoolean("registration_checkout", true).apply()
                                 auth.currentUser?.sendEmailVerification()
                             }
                             register = false
                         } else error = localizedAuthError(context, result.exception, R.string.auth_failed)
                     }
+                    }
+                    if (register) {
+                        val purchase = paidPurchase
+                        if (purchase == null) { busy = false; error = context.getString(R.string.auth_failed) }
+                        else registrationPurchase.complete(purchase, address, password) { created ->
+                            if (created) signIn() else { busy = false; error = context.getString(R.string.auth_failed) }
+                        }
+                    } else signIn()
                 }
-            }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (register) stringResource(R.string.create_account) else stringResource(R.string.email_sign_in)) }
+            }, enabled = !busy && (!register || billingReady), modifier = Modifier.fillMaxWidth()) { Text(if (register) stringResource(R.string.create_account) else stringResource(R.string.email_sign_in)) }
             // Separate rows prevent long translations from clipping the password-reset action.
             OutlinedButton(onClick = { if (register) register = false else showPremiumTerms = true; error = null }, enabled = !busy,
                 modifier = Modifier.fillMaxWidth()) {
