@@ -44,3 +44,27 @@ async function consumePermit(db, permit, session, uid, now = Date.now()) {
   });
 }
 module.exports = {hash,secret,assertPurchase,issuePermit,consumePermit};
+
+/** Reserve a stable server-owned UID before calling Firebase Auth. */
+async function reserveAccount(db, permit, session, email, now = Date.now()) {
+  if (!validSecret(permit) || !validSecret(session) || typeof email !== "string" || !email || email.length > 254) throw new Error("invalid registration");
+  const ref = db.collection("premiumRegistrationPermits").doc(hash(permit));
+  return db.runTransaction(async tx => {
+    const p = (await tx.get(ref)).data();
+    if (!p || p.sessionHash !== hash(session)) throw new Error("permit unavailable");
+    const claim = db.collection("premiumRegistrationClaims").doc(p.claimId);
+    const c = (await tx.get(claim)).data();
+    if (!c || c.sessionHash !== hash(session) || c.permitHash !== hash(permit)) throw new Error("claim unavailable");
+    const emailHash = hash(email.trim().toLowerCase());
+    if (c.uid) {
+      if (!p.used || c.emailHash !== emailHash || p.uid !== c.uid) throw new Error("claim unavailable");
+      return c.uid;
+    }
+    if (p.used || p.expiresAt <= now) throw new Error("permit unavailable");
+    const uid = "premium_" + secret();
+    tx.update(ref,{used:true,uid,usedAt:now});
+    tx.update(claim,{uid,emailHash,boundAt:now});
+    return uid;
+  });
+}
+module.exports.reserveAccount = reserveAccount;
