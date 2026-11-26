@@ -158,7 +158,7 @@
     <string name="cloud_restore_error">Error de restauración: %1$s</string>
     <string name="cloud_unknown_error">Error desconocido</string>
     <string name="guest_continue">Continuar sin registro</string>
-    <string name="guest_explanation">Cree y guarde informes localmente. La sincronización en la nube requiere iniciar sesión.</string>
+    <string name="guest_explanation">El registro solo es necesario para Premium. Crea, edita y guarda informes localmente gratis sin cuenta. Premium añade sincronización en la nube y elimina los anuncios.</string>
     <string name="guest_local_notice">Modo invitado: los informes solo se guardan en este dispositivo. La sincronización en la nube requiere iniciar sesión.</string>
     <string name="guest_sign_in">Iniciar sesión / Registrarse</string>
     <string name="guest_cloud_required">La sincronización en la nube requiere iniciar sesión.</string>
