@@ -78,10 +78,16 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     val registrationPurchase = remember { PremiumRegistrationPurchase(context) }
     var registrationBilling by remember { mutableStateOf<PremiumBilling?>(null) }
     var paidPurchase by remember { mutableStateOf<com.android.billingclient.api.Purchase?>(null) }
+    var pendingPurchase by remember { mutableStateOf(false) }
     var billingReady by remember { mutableStateOf(false) }
     androidx.compose.runtime.DisposableEffect(register) {
         if (register && BuildConfig.PREMIUM_CHECKOUT_ENABLED) {
             fun accept(purchases: List<com.android.billingclient.api.Purchase>) {
+                pendingPurchase = purchases.any {
+                    it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PENDING &&
+                    PREMIUM_PRODUCT in it.products &&
+                    it.accountIdentifiers?.obfuscatedAccountId == registrationPurchase.accountHash
+                }
                 paidPurchase = purchases.firstOrNull {
                     it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PURCHASED &&
                     !it.isSuspended && PREMIUM_PRODUCT in it.products &&
@@ -101,7 +107,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 billingReady = result.responseCode == com.android.billingclient.api.BillingClient.BillingResponseCode.OK
                 if (billingReady) billing.queryPurchases { _, purchases -> accept(purchases) }
             }
-            onDispose { billing.close(); registrationBilling = null; billingReady = false; paidPurchase = null }
+            onDispose { billing.close(); registrationBilling = null; billingReady = false; paidPurchase = null; pendingPurchase = false }
         } else onDispose {}
     }
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
@@ -216,6 +222,22 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     busy = false
                     error = context.getString(R.string.password_short)
                 } else {
+                    if (register && pendingPurchase && paidPurchase == null) {
+                        registrationBilling?.queryPurchases { _, purchases ->
+                            paidPurchase = purchases.firstOrNull {
+                                it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PURCHASED &&
+                                !it.isSuspended && PREMIUM_PRODUCT in it.products &&
+                                it.accountIdentifiers?.obfuscatedAccountId == registrationPurchase.accountHash
+                            }
+                            pendingPurchase = purchases.any {
+                                it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PENDING &&
+                                PREMIUM_PRODUCT in it.products &&
+                                it.accountIdentifiers?.obfuscatedAccountId == registrationPurchase.accountHash
+                            }
+                            busy = false
+                        } ?: run { busy = false }
+                        return@Button
+                    }
                     if (register && paidPurchase == null) {
                         val billing = registrationBilling
                         val activity = context as? android.app.Activity
