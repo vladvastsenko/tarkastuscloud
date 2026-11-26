@@ -46,3 +46,9 @@ exports.preparePremiumRegistration = onCall({region:"europe-west1",maxInstances:
     throw new HttpsError("failed-precondition","Registration permit unavailable");
   }
 });
+
+ // Deploy only after the paid registration flow is ready.
+const {beforeUserCreated} = require("firebase-functions/v2/identity");
+exports.blockDirectRegistration = beforeUserCreated({region:"europe-west1"}, () => {
+  throw new HttpsError("permission-denied","Registration requires a verified purchase");
+});
