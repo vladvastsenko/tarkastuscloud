@@ -53,7 +53,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     val auth = remember { FirebaseAuth.getInstance() }
     var signedIn by remember { mutableStateOf(auth.currentUser != null) }
     val guestPrefs = remember { context.getSharedPreferences("tarkastus_guest_mode", android.content.Context.MODE_PRIVATE) }
-    var guest by remember { mutableStateOf(auth.currentUser == null && guestPrefs.getBoolean("enabled", false)) }
+    var guest by remember { mutableStateOf(auth.currentUser == null && guestPrefs.getBoolean("enabled", true)) }
     var registrationCheckout by remember { mutableStateOf(guestPrefs.getBoolean("registration_checkout", false) && auth.currentUser != null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
