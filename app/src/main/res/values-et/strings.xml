@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">PDF-i eelvaade</string>
     <string name="ui_preview_unavailable">PDF-i vaaturit pole paigaldatud</string>
     <string name="guest_continue">Jätka registreerimata</string>
-    <string name="guest_explanation">Loo ja salvesta aruandeid seadmesse. Pilvesünkroonimiseks tuleb sisse logida.</string>
+    <string name="guest_explanation">Registreerimine on vajalik ainult Premiumi jaoks. Aruannete loomine, muutmine ja kohalik salvestamine on tasuta ka ilma kontota. Premium lisab pilvesünkroonimise ja eemaldab reklaamid.</string>
     <string name="guest_local_notice">Külalisrežiim: aruanded salvestatakse ainult sellesse seadmesse. Pilvesünkroonimiseks tuleb sisse logida.</string>
     <string name="guest_sign_in">Logi sisse / Registreeru</string>
     <string name="guest_cloud_required">Pilvesünkroonimiseks tuleb sisse logida.</string>
