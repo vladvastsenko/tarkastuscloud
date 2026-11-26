@@ -44,7 +44,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.functions.FirebaseFunctions
 
 @Composable
 internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registrationCheckout: Boolean, onCheckoutFinished: () -> Unit, onCheckoutDeclined: () -> Unit) -> Unit) {
@@ -130,8 +130,13 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
                 val token = account.idToken ?: error("Missing Google ID token")
-                val credential = GoogleAuthProvider.getCredential(token, null)
-                auth.signInWithCredential(credential).addOnCompleteListener { task ->
+                FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("signInExistingGoogle")
+                    .call(mapOf("idToken" to token))
+                    .continueWithTask { result ->
+                        val customToken = (result.result.data as? Map<*, *>)?.get("customToken") as? String
+                            ?: throw IllegalStateException("Missing server credential")
+                        auth.signInWithCustomToken(customToken)
+                    }.addOnCompleteListener { task ->
                     busy = false
                     if (task.isSuccessful) {
                         guest = false
@@ -188,7 +193,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             }
             Button(
                 onClick = {
-                    if (webClientId.isBlank()) { error = context.getString(R.string.google_failed) }
+                    if (!BuildConfig.PREMIUM_CHECKOUT_ENABLED || webClientId.isBlank()) { error = context.getString(R.string.google_failed) }
                     else {
                         busy = true
                         error = null
@@ -196,7 +201,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
                     }
                 },
-                enabled = !busy,
+                enabled = !busy && BuildConfig.PREMIUM_CHECKOUT_ENABLED,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.sign_in))
