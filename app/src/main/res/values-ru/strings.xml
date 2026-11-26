@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Предпросмотр PDF</string>
     <string name="ui_preview_unavailable">На устройстве нет приложения для просмотра PDF</string>
     <string name="guest_continue">Продолжить без регистрации</string>
-    <string name="guest_explanation">Создавайте и сохраняйте отчёты на устройстве. Для облачной синхронизации нужен вход.</string>
+    <string name="guest_explanation">Регистрация нужна только для Premium. Создание, редактирование и локальное сохранение отчётов доступны бесплатно без аккаунта. Premium добавляет облачную синхронизацию и отключает рекламу.</string>
     <string name="guest_local_notice">Гостевой режим: отчёты хранятся только на этом устройстве. Для облака нужен вход.</string>
     <string name="guest_sign_in">Войти / Зарегистрироваться</string>
     <string name="guest_cloud_required">Для облачной синхронизации необходимо войти.</string>
