@@ -18,7 +18,7 @@ internal data class CustomSection(val id: String = customId(), val title: String
 @Serializable
 internal data class CustomTemplate(val id: String = customId(), val title: String = "", val sections: List<CustomSection> = listOf(CustomSection()))
 @Serializable
-internal data class CustomDocument(val id: String = customId(), val template: CustomTemplate = CustomTemplate(), val values: Map<String,String> = emptyMap(), val attachments: Map<String,List<String>> = emptyMap(), val pdfLanguage: String = "")
+internal data class CustomDocument(val id: String = customId(), val template: CustomTemplate = CustomTemplate(), val values: Map<String,String> = emptyMap(), val attachments: Map<String,List<String>> = emptyMap(), val pdfLanguage: String = "", val useSharedSettings: Boolean = true)
 @Serializable
 internal data class CustomLibrary(val templates: List<CustomTemplate> = emptyList(), val documents: List<CustomDocument> = emptyList())
 internal class CustomStore(private val root: File) {
@@ -66,6 +66,18 @@ internal class CustomStore(private val root: File) {
             json.decodeFromString<CustomDocument>(AtomicFile(File(records,it)).readFully().decodeToString())
         }
         CustomLibrary(templates,documents)
+    }
+    fun deleteDocument(id: String) = synchronized(lock) {
+        val target = record("d", id)
+        target.delete()
+        check(!target.baseFile.exists() && !File(target.baseFile.path+".bak").exists())
+        if (activeEditor() == "d:" + id) rememberEditor("")
+    }
+    fun deleteTemplate(id: String) = synchronized(lock) {
+        val target = record("t", id)
+        target.delete()
+        check(!target.baseFile.exists() && !File(target.baseFile.path+".bak").exists())
+        if (activeEditor() == "t:" + id) rememberEditor("")
     }
     fun saveDocument(value: CustomDocument) = synchronized(lock) { write(record("d",value.id),json.encodeToString(value).encodeToByteArray()) }
     fun saveTemplate(value: CustomTemplate) = synchronized(lock) { write(record("t",value.id),json.encodeToString(value).encodeToByteArray()) }
