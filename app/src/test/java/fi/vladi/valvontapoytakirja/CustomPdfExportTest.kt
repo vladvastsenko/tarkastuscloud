@@ -2,10 +2,8 @@ package fi.vladi.valvontapoytakirja
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.os.Environment
 import fi.vladi.valvontapoytakirja.data.ReportRepository
 import fi.vladi.valvontapoytakirja.model.AppSettings
-import java.io.File
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +13,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], manifest = Config.NONE)
+@Config(sdk = [34], manifest = Config.NONE)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CustomPdfExportTest {
     @Test fun exportWithAttachmentsAndSettingsPreservesPreviousPdf() {
@@ -38,13 +36,14 @@ class CustomPdfExportTest {
             customerText = "Customer", siteText = "Site", pdfLanguage = "en"
         )
         store.saveDocument(report)
-        val first = File(requireNotNull(exportCustomPdf(context, store, report).path))
-        val bytes = first.readBytes()
+        val first = exportCustomPdf(context, store, report)
+        fun read(uri: android.net.Uri): ByteArray = requireNotNull(context.contentResolver.openInputStream(uri)).use { it.readBytes() }
+        val bytes = read(first)
         assertTrue(bytes.size > 100)
         assertEquals("%PDF-", bytes.copyOfRange(0,5).decodeToString())
-        val second = File(requireNotNull(exportCustomPdf(context, store, report.copy(useSharedSettings = false)).path))
+        val second = exportCustomPdf(context, store, report.copy(useSharedSettings = false))
         assertNotEquals(first, second)
-        assertArrayEquals(bytes, first.readBytes())
-        assertEquals("%PDF-", second.readBytes().copyOfRange(0,5).decodeToString())
+        assertArrayEquals(bytes, read(first))
+        assertEquals("%PDF-", read(second).copyOfRange(0,5).decodeToString())
     }
 }
