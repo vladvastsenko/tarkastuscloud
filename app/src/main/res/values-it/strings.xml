@@ -158,7 +158,7 @@
     <string name="cloud_restore_error">Ripristino non riuscito: %1$s</string>
     <string name="cloud_unknown_error">Errore sconosciuto</string>
     <string name="guest_continue">Continua senza registrazione</string>
-    <string name="guest_explanation">Crea e salva rapporti in locale. La sincronizzazione cloud richiede l’accesso.</string>
+    <string name="guest_explanation">La registrazione serve solo per Premium. Crea, modifica e salva i rapporti in locale gratuitamente senza account. Premium aggiunge la sincronizzazione cloud e rimuove la pubblicità.</string>
     <string name="guest_local_notice">Modalità ospite: i rapporti sono salvati solo su questo dispositivo. La sincronizzazione cloud richiede l’accesso.</string>
     <string name="guest_sign_in">Accedi / Registrati</string>
     <string name="guest_cloud_required">La sincronizzazione cloud richiede l’accesso.</string>
