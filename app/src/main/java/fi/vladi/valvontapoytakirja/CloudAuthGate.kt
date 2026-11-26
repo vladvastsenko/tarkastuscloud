@@ -224,15 +224,15 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     }
     if (simulatedCheckout && developerGoogle && !signedIn && !guest) {
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("TEST — Premium", style = MaterialTheme.typography.headlineSmall)
-            Text("Simulated payment. No charge, Firebase account or cloud access.")
+            Text(testCheckoutText(context, 0), style = MaterialTheme.typography.headlineSmall)
+            Text(testCheckoutText(context, 1))
             Button(onClick = {
                 simulatedCheckout = false
-                message = "TEST — Payment successful. No account created."
-            }, modifier = Modifier.fillMaxWidth()) { Text("TEST — Confirm payment") }
+                message = testCheckoutText(context, 3)
+            }, modifier = Modifier.fillMaxWidth()) { Text(testCheckoutText(context, 2)) }
             OutlinedButton(onClick = {
                 simulatedCheckout = false
-                message = "TEST — Payment cancelled"
+                message = testCheckoutText(context, 4)
             }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.back)) }
         }
         return
@@ -428,3 +428,24 @@ private fun localizedAuthError(context: android.content.Context, error: Exceptio
 }
 
 
+
+private fun testCheckoutText(context: android.content.Context, index: Int): String {
+    val language = context.resources.configuration.locales[0].language
+    val labels = when (language) {
+        "fi" -> listOf("Testimaksu", "Maksua simuloidaan. Ei veloitusta, Firebase-tiliä eikä pilvipalvelua.", "Vahvista testimaksu", "Testimaksu onnistui. Tiliä ei luotu.", "Testimaksu peruttu")
+        "ru" -> listOf("Тестовая оплата", "Имитация оплаты. Без списания денег, аккаунта Firebase и доступа к облаку.", "Подтвердить тестовую оплату", "Тестовая оплата успешна. Аккаунт не создан.", "Тестовая оплата отменена")
+        "sv" -> listOf("Testbetalning", "Simulerad betalning. Ingen debitering, inget Firebase-konto eller molnåtkomst.", "Bekräfta testbetalning", "Testbetalningen lyckades. Inget konto skapades.", "Testbetalningen avbröts")
+        "nb" -> listOf("Testbetaling", "Simulert betaling. Ingen belastning, Firebase-konto eller skytilgang.", "Bekreft testbetaling", "Testbetalingen lyktes. Ingen konto opprettet.", "Testbetalingen ble avbrutt")
+        "da" -> listOf("Testbetaling", "Simuleret betaling. Ingen opkrævning, Firebase-konto eller skyadgang.", "Bekræft testbetaling", "Testbetalingen lykkedes. Ingen konto oprettet.", "Testbetalingen blev annulleret")
+        "et" -> listOf("Testmakse", "Simuleeritud makse. Raha ei võeta, Firebase’i kontot ega pilvejuurdepääsu ei looda.", "Kinnita testmakse", "Testmakse õnnestus. Kontot ei loodud.", "Testmakse tühistati")
+        "lv" -> listOf("Testa maksājums", "Simulēts maksājums. Nav maksas, Firebase konta vai mākoņa piekļuves.", "Apstiprināt testa maksājumu", "Testa maksājums veiksmīgs. Konts nav izveidots.", "Testa maksājums atcelts")
+        "lt" -> listOf("Bandomasis mokėjimas", "Imituojamas mokėjimas. Nėra mokesčio, Firebase paskyros ar prieigos prie debesijos.", "Patvirtinti bandomąjį mokėjimą", "Bandomasis mokėjimas sėkmingas. Paskyra nesukurta.", "Bandomasis mokėjimas atšauktas")
+        "fr" -> listOf("Paiement de test", "Paiement simulé. Aucun débit, compte Firebase ni accès au cloud.", "Confirmer le paiement de test", "Paiement de test réussi. Aucun compte créé.", "Paiement de test annulé")
+        "es" -> listOf("Pago de prueba", "Pago simulado. Sin cargo, cuenta de Firebase ni acceso a la nube.", "Confirmar pago de prueba", "Pago de prueba correcto. No se creó ninguna cuenta.", "Pago de prueba cancelado")
+        "it" -> listOf("Pagamento di prova", "Pagamento simulato. Nessun addebito, account Firebase o accesso al cloud.", "Conferma pagamento di prova", "Pagamento di prova riuscito. Nessun account creato.", "Pagamento di prova annullato")
+        "de" -> listOf("Testzahlung", "Simulierte Zahlung. Keine Abbuchung, kein Firebase-Konto und kein Cloud-Zugriff.", "Testzahlung bestätigen", "Testzahlung erfolgreich. Kein Konto erstellt.", "Testzahlung abgebrochen")
+        "pl" -> listOf("Płatność testowa", "Symulowana płatność. Bez obciążenia, konta Firebase ani dostępu do chmury.", "Potwierdź płatność testową", "Płatność testowa udana. Nie utworzono konta.", "Płatność testowa anulowana")
+        else -> listOf("Test payment", "Simulated payment. No charge, Firebase account or cloud access.", "Confirm test payment", "Test payment successful. No account created.", "Test payment cancelled")
+    }
+    return labels[index]
+}
