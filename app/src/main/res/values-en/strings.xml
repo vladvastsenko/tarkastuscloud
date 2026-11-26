@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Preview PDF</string>
     <string name="ui_preview_unavailable">No PDF viewer is installed</string>
     <string name="guest_continue">Continue without registration</string>
-    <string name="guest_explanation">Create and save reports locally. Cloud sync requires sign-in.</string>
+    <string name="guest_explanation">Registration is only needed for Premium. Create, edit and save reports locally for free without an account. Premium adds cloud sync and removes ads.</string>
     <string name="guest_local_notice">Guest mode: reports are stored only on this device. Cloud sync requires sign-in.</string>
     <string name="guest_sign_in">Sign in / Register</string>
     <string name="guest_cloud_required">Cloud sync requires sign-in.</string>
