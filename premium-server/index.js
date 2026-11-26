@@ -11,7 +11,11 @@ exports.verifyPremium = onCall({region:"europe-west1",maxInstances:5}, async req
   try {
     const client = await auth.getClient();
     const {data} = await client.request({url:base+"/subscriptionsv2/tokens/"+encodeURIComponent(token),timeout:15000});
-    const result = assess(data,uid);
+    const claim = (await getFirestore().collection("premiumRegistrationClaims").doc(hash(token)).get()).data();
+    if (claim && claim.uid !== uid) throw new Error("purchase binding mismatch");
+    const result = claim
+      ? assess(data,uid,Date.now(),claim.sessionHash)
+      : assess(data,uid);
     if (result.eligible && data.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
       await client.request({method:"POST",url:base+"/subscriptions/"+product+"/tokens/"+encodeURIComponent(token)+":acknowledge",data:{},timeout:15000});
     } else if (result.eligible && data.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") {
@@ -26,7 +30,7 @@ exports.verifyPremium = onCall({region:"europe-west1",maxInstances:5}, async req
 
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
-const {issuePermit} = require("./registration");
+const {issuePermit,hash} = require("./registration");
 initializeApp();
 exports.preparePremiumRegistration = onCall({region:"europe-west1",maxInstances:5,enforceAppCheck:true}, async request => {
   const {purchaseToken,session} = request.data || {};
