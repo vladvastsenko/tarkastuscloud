@@ -29,7 +29,7 @@ internal class CustomStore(context: Context) {
     private val records = File(root,"records").apply { mkdirs() }
     private val session = AtomicFile(File(root, "active-editor"))
     fun activeEditor(): String? = synchronized(lock) { try { session.readFully().decodeToString().takeIf { it.isNotBlank() } } catch (_: java.io.FileNotFoundException) { null } }
-    fun rememberEditor(value: String) = synchronized(lock) { write(session, value.encodeToByteArray()) }
+    fun rememberEditor(value: String) = synchronized(lock) { if (activeEditor().orEmpty() != value) write(session, value.encodeToByteArray()) }
     private val marker = AtomicFile(File(records,"ready"))
     private fun readLegacy(): CustomLibrary = try {
         json.decodeFromString<CustomLibrary>(file.readFully().decodeToString())

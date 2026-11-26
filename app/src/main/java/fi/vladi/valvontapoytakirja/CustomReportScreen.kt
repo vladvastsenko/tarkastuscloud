@@ -24,7 +24,8 @@ private fun <T> List<T>.moveAt(i: Int, delta: Int): List<T> = if (i+delta !in in
 @Composable
 internal fun CustomReportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val l = customLabels(AppLanguage.selected(context))
+    val language = AppLanguage.selected(context)
+    val l = remember(language) { customLabels(language) }
     val store = remember { CustomStore(context.applicationContext) }
     val loadedState by produceState<Result<Pair<CustomLibrary, String?>>?>(null, store) {
         activeCustomWorker?.join()
@@ -52,6 +53,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (worker?.isActive == true) return
         worker = customSaveScope.launch {
             while (queued.isNotEmpty()) {
+                kotlinx.coroutines.delay(120)
                 val entry = queued.entries.first()
                 val task = entry.value
                 queued.remove(entry.key)

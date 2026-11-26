@@ -1,5 +1,6 @@
 package fi.vladi.valvontapoytakirja
 
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.app.DatePickerDialog
@@ -110,8 +111,22 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
     val context = LocalContext.current
     var pending by rememberSaveable { mutableStateOf<String?>(null) }
     val latestImages by rememberUpdatedState(images)
+    val latestOnImages by rememberUpdatedState(onImages)
+    val scope = rememberCoroutineScope()
+    var importing by remember { mutableStateOf(false) }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        if (uris.isNotEmpty()) runCatching { uris.map { store.importImage(context,it) } }.onSuccess { onImages(latestImages + it) }.onFailure { onError() }
+        if (uris.isNotEmpty() && !importing) {
+            importing = true
+            scope.launch {
+                try {
+                    val imported = withContext(Dispatchers.IO) { uris.mapNotNull { uri -> runCatching { store.importImage(context, uri) }.getOrNull() } }
+                    if (imported.isNotEmpty()) latestOnImages(latestImages + imported)
+                    if (imported.size != uris.size) onError()
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) { onError() }
+                finally { importing = false }
+            }
+        }
     }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val file = pending?.let { File(it) }
@@ -123,8 +138,8 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
         } catch (e: Exception) { onError() } finally { file?.delete(); pending = null }
     }
     Row {
-        OutlinedButton(onClick = { gallery.launch("image/*") }) { Text(l[21]) }
-        OutlinedButton(onClick = {
+        OutlinedButton(enabled = !importing, onClick = { gallery.launch("image/*") }) { Text(l[21]) }
+        OutlinedButton(enabled = !importing, onClick = {
             runCatching {
                 val file = File.createTempFile("custom_camera_",".jpg",context.cacheDir)
                 pending = file.path
@@ -132,6 +147,7 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
             }.onFailure { pending?.let { File(it).delete() }; pending = null; onError() }
         }) { Text("📷") }
     }
+    if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     images.forEachIndexed { i,name -> key(name) {
         CustomPreview(name,store)
         TextButton(onClick = { onImages(images.filterIndexed { index,_ -> index != i }) }) { Text(l[17]+" "+(i+1)) }
