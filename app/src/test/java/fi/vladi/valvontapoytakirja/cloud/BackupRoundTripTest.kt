@@ -40,7 +40,16 @@ class BackupRoundTripTest {
                     observations=listOf(InspectionObservation(description="Observation",photos=listOf(ReportPhoto(filePath=jpeg.path)))))
             }
             assertEquals(7,reports.size)
-            reports.forEach { file("tarkastus_reports/${it.id}.json").writeText(Json.encodeToString(InspectionReport.serializer(),it)) }
+            fun repository(dir: File): fi.vladi.tarkastuspoytakirja.data.ReportRepository {
+                val baseContext = org.robolectric.RuntimeEnvironment.getApplication()
+                val context = object : android.content.ContextWrapper(baseContext) {
+                    override fun getFilesDir(): File = dir
+                }
+                return fi.vladi.tarkastuspoytakirja.data.ReportRepository(context)
+            }
+            val sourceRepository = repository(root)
+            reports.forEach { sourceRepository.save(it) }
+            assertEquals(reports.toSet(),sourceRepository.listReports().toSet())
             val field = CustomField(id="photo",kind=CustomKind.PHOTOS)
             val doc = CustomDocument(template=CustomTemplate(sections=listOf(CustomSection(fields=listOf(field)))),attachments=mapOf("photo" to listOf("photo.image")))
             jpeg.copyTo(file("custom_reports/photo.image"))
@@ -51,7 +60,7 @@ class BackupRoundTripTest {
             root.walkTopDown().filter { it.isFile }.forEach { original ->
                 assertArrayEquals(original.readBytes(),File(restored,original.relativeTo(root).path).readBytes())
             }
-            reports.forEach { assertEquals(it,Json.decodeFromString(InspectionReport.serializer(),File(restored,"tarkastus_reports/${it.id}.json").readText())) }
+            assertEquals(reports.toSet(),repository(restored).listReports().toSet())
             assertEquals(settings,Json.decodeFromString(AppSettings.serializer(),File(restored,"app_settings.json").readText()))
             assertEquals(doc,fi.vladi.valvontapoytakirja.CustomStore(File(restored,"custom_reports")).load().documents.single())
             for (original in listOf(jpeg,png)) {
