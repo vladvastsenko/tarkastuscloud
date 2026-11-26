@@ -247,12 +247,9 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
             if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
     } else {
-        UnifiedStartScreen(
-            onTarkastus = {
-                context.startActivity(Intent(context, TarkastusMainActivity::class.java))
-            },
+        fi.vladi.tarkastuspoytakirja.TarkastusApp(
             onManagement = { showManagement = true },
-            showAds = (consent?.canRequestAds == true && !premium.active)
+            homeFooter = { if (consent?.canRequestAds == true && !premium.active) CloudAdMobBanner() }
         )
     }
 }
