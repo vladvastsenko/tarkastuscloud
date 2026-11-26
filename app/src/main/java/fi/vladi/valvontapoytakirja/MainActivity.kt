@@ -317,28 +317,32 @@ private fun ManagementScreen(
                 }
             }
         }
-        Text(stringResource(R.string.pdf_language_default), fontWeight = FontWeight.Bold)
-        Text(AppLanguage.label(AppLanguage.selected(context)))
         if (!guestMode) BiometricSettingsControl()
+        else {
+            Text(stringResource(R.string.bio_title))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.bio_disabled))
+                Switch(checked = false, onCheckedChange = {}, enabled = false)
+            }
+        }
         Button(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.shared_settings))
         }
-        if (!guestMode) {
-            Button(onClick = onCloudBackup, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.cloud_sync))
-            }
-        } else {
-            Text(stringResource(R.string.guest_local_notice))
+        OutlinedButton(onClick = onUserGuide, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.user_guide_title))
+        }
+        Button(onClick = { if (guestMode) onSignOut() else onCloudBackup() },
+            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.cloud_sync))
+        }
+        if (guestMode) Text(stringResource(R.string.guest_local_notice))
+        OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true },
+            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
+            Text(if (guestMode) stringResource(R.string.guest_sign_in) else stringResource(R.string.sign_out))
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text("← " + stringResource(R.string.back))
-        }
-        if (!BuildConfig.OFFLINE_PREVIEW) OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(if (guestMode) stringResource(R.string.guest_sign_in) else stringResource(R.string.sign_out))
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onUserGuide, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.user_guide_title))
         }
         if (consent?.privacyOptionsRequired == true) {
             OutlinedButton(onClick = { consent.showPrivacyOptions() }, modifier = Modifier.fillMaxWidth()) {

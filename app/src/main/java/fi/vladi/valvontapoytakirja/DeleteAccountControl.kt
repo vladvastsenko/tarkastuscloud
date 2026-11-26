@@ -16,9 +16,10 @@ internal fun DeleteAccountControl(onDeleted: () -> Unit) {
     var open by remember(user.uid) { mutableStateOf(false) }
     var busy by remember(user.uid) { mutableStateOf(false) }
     var error by remember(user.uid) { mutableStateOf<Int?>(null) }
-    OutlinedButton(onClick = { error = null; open = true }, enabled = !busy,
+    Button(onClick = { error = null; open = true }, enabled = !busy,
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError),
         modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.delete_account), color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.delete_account))
     }
     if (open) {
         AlertDialog(
