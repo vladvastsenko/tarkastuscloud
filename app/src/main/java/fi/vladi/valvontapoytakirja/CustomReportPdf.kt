@@ -157,6 +157,35 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
                 }
             }
         }
+        if (report.useSharedSettings) {
+            val inspector = fi.vladi.valvontapoytakirja.data.ReportRepository(context).listInspectors().firstOrNull { it.id == report.inspectorId }
+            val signaturePath = if (report.inspectorId.isBlank()) settings.signatureImagePath else inspector?.signatureImagePath.orEmpty()
+            val strokes = if (report.inspectorId.isBlank()) settings.signatureStrokes else inspector?.signatureStrokes.orEmpty()
+            if (signaturePath.isNotBlank()) {
+                decodeCustomImage(File(signaturePath), 1200)?.let { bitmap ->
+                    try {
+                        resumeText()
+                        val scale = minOf(200f / bitmap.width, 90f / bitmap.height)
+                        val w = bitmap.width * scale
+                        val h = bitmap.height * scale
+                        space(h + 16f)
+                        page.canvas.drawBitmap(bitmap, null, RectF(42f,y,42f+w,y+h),paint)
+                        y += h + 16f
+                    } finally { bitmap.recycle() }
+                }
+            } else if (strokes.any { it.points.isNotEmpty() }) {
+                resumeText()
+                space(100f)
+                val points = strokes.flatMap { it.points }
+                val minX = points.minOf { it.x }; val minY = points.minOf { it.y }
+                val scale = minOf(200f / (points.maxOf { it.x } - minX).coerceAtLeast(1f), 80f / (points.maxOf { it.y } - minY).coerceAtLeast(1f))
+                paint.strokeWidth = 1.5f
+                strokes.forEach { stroke -> stroke.points.zipWithNext().forEach { (a,b) ->
+                    page.canvas.drawLine(42f+(a.x-minX)*scale,y+(a.y-minY)*scale,42f+(b.x-minX)*scale,y+(b.y-minY)*scale,paint)
+                } }
+                y += 100f
+            }
+        }
         finish()
         val file = File.createTempFile("custom_", ".pdf", context.cacheDir)
         try { file.outputStream().use { pdf.writeTo(it) }; check(SharedDocumentsArchive.archiveFile(context,file,"Raportit/PDF","custom_"+report.id+"_"+java.util.UUID.randomUUID()+".pdf","application/pdf", overwrite = false) != null) } finally { file.delete() }
