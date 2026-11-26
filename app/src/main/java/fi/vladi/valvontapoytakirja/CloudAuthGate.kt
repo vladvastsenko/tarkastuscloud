@@ -122,11 +122,11 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             Text("Tarkastus Cloud", style = MaterialTheme.typography.headlineSmall)
             Box {
                 OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(loginLanguageLabel(AppLanguage.selected(context), AppLanguage.label(AppLanguage.selected(context))) + " ▾")
+                    Text(AppLanguage.flaggedLabel(AppLanguage.selected(context)) + " ▾")
                 }
                 DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
                     AppLanguage.options.forEach { (code, label) ->
-                        DropdownMenuItem(text = { Text(loginLanguageLabel(code, label)) }, onClick = {
+                        DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
                             languageMenu = false
                             if (AppLanguage.selected(context) != code) {
                                 AppLanguage.save(context, code)
@@ -241,12 +241,4 @@ private fun localizedAuthError(context: android.content.Context, error: Exceptio
     return context.getString(resource)
 }
 
-private fun loginLanguageLabel(code: String, label: String): String {
-    val flag = when (code) {
-        "en" -> "🇬🇧"; "fi" -> "🇫🇮"; "sv" -> "🇸🇪"; "nb" -> "🇳🇴"
-        "da" -> "🇩🇰"; "et" -> "🇪🇪"; "lv" -> "🇱🇻"; "lt" -> "🇱🇹"
-        "ru" -> "🇷🇺"; "fr" -> "🇫🇷"; "es" -> "🇪🇸"; "it" -> "🇮🇹"
-        "de" -> "🇩🇪"; "pl" -> "🇵🇱"; else -> ""
-    }
-    return if (flag.isEmpty()) label else "$flag  $label"
-}
+

@@ -143,11 +143,11 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
                             containerColor = androidx.compose.ui.graphics.Color.White
                         )
                     ) {
-                        Text(languages.first { it.first == selected }.second + " ▾")
+                        Text(AppLanguage.flaggedLabel(selected) + " ▾")
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         languages.forEach { (code, label) ->
-                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                            DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
                                 selected = code
                                 expanded = false
                             })
@@ -311,11 +311,11 @@ private fun ManagementScreen(
         Text(stringResource(R.string.language), fontWeight = FontWeight.Bold)
         Box {
             OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(AppLanguage.label(AppLanguage.selected(context)) + " ▾")
+                Text(AppLanguage.flaggedLabel(AppLanguage.selected(context)) + " ▾")
             }
             DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
                 AppLanguage.options.forEach { (code, label) ->
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                    DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
                         languageMenu = false
                         if (AppLanguage.selected(context) != code) {
                             AppLanguage.save(context, code)
