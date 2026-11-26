@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import fi.vladi.tarkastuspoytakirja.AppLanguage
 
+private var activeCustomWorker: kotlinx.coroutines.Job? = null
 private val customSaveScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Main.immediate)
 
 private fun <T> List<T>.replaceAt(i: Int, v: T) = toMutableList().apply { this[i] = v }.toList()
@@ -24,8 +25,9 @@ private fun <T> List<T>.moveAt(i: Int, delta: Int): List<T> = if (i+delta !in in
 internal fun CustomReportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val l = customLabels(AppLanguage.selected(context))
-    val store = remember { CustomStore(context) }
+    val store = remember { CustomStore(context.applicationContext) }
     val loadedState by produceState<Result<CustomLibrary>?>(null, store) {
+        activeCustomWorker?.join()
         value = withContext(Dispatchers.IO) { runCatching { store.load() } }
     }
     val loaded = loadedState
@@ -41,10 +43,11 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     val writer = remember { kotlinx.coroutines.sync.Mutex() }
     var pendingWrites by remember { mutableStateOf(0) }
     val queued = remember { linkedMapOf<String, suspend () -> Unit>() }
+    val failedKeys = remember { mutableStateMapOf<String, Boolean>() }
     var worker by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     fun enqueue(action: () -> Unit, key: String = customId(), done: () -> Unit = {}) {
         queued.remove(key)
-        queued[key] = { withContext(Dispatchers.IO) { action() }; done() }
+        queued[key] = { withContext(Dispatchers.IO) { action() }; failedKeys.remove(key); done() }
         pendingWrites = queued.size + 1
         if (worker?.isActive == true) return
         worker = customSaveScope.launch {
@@ -56,12 +59,14 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                     writer.lock()
                     try { task() } finally { writer.unlock() }
                 } catch (e: Exception) {
+                    failedKeys[entry.key] = true
                     message = l[24]
                 }
                 pendingWrites = queued.size + 1
             }
             pendingWrites = 0
         }
+        activeCustomWorker = worker
     }
     fun persist(next: CustomLibrary) {
         if (loaded.isFailure) { message = l[24]; return }
@@ -92,12 +97,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (d != null) {
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
-            enqueue({ store.saveDocument(d) }) { if (document == d) { library = next; document = null } }
+            enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { if (document == d) { library = next; document = null } }
         } else if (t != null) {
             if (t.title.isBlank()) { template = null; return }
             if (loaded.isFailure) { message = l[24]; return }
             val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
-            enqueue({ store.saveTemplate(t) }) { if (template == t) { library = next; template = null } }
+            enqueue({ store.saveTemplate(t) }, key = "template:" + t.id) { if (template == t) { library = next; template = null } }
         } else onBack()
     }
     BackHandler { back() }
@@ -124,8 +129,8 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             fun valid(): Boolean = d.template.sections.flatMap { it.fields }.all { f ->
                 !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
-            Button(onClick = { persist(library.copy(documents = library.documents.filterNot { it.id == d.id } + d)) }) { Text(l[14]) }
-            Button(enabled = !busy && pendingWrites == 0, onClick = {
+            Button(onClick = { enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { message = l[23] } }) { Text(l[14]) }
+            Button(enabled = !busy && pendingWrites == 0 && failedKeys.isEmpty(), onClick = {
                 if (!valid()) message = l[22] else {
                     busy = true
                     scope.launch {
@@ -164,10 +169,10 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Button(onClick = { persist(library.copy(templates = library.templates.filterNot { it.id == t.id } + t)) }, enabled = t.title.isNotBlank()) { Text(l[12]) }
             Button(onClick = { template = null; updateDocument(CustomDocument(template = t, pdfLanguage = AppLanguage.selected(context))) }, enabled = t.title.isNotBlank()) { Text(l[13]) }
         } else {
-            Button(onClick = { template = CustomTemplate() }) { Text(l[1]) }
+            Button(onClick = { updateTemplate(CustomTemplate()) }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
-            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { template = item.copy(id = customId()) }) { Text(l[18]) } } }
+            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { template = item }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) } } }
             Text(l[3], style = MaterialTheme.typography.titleMedium)
             for (item in library.documents) OutlinedButton(onClick = { document = item }) { Text(item.template.title) }
         }

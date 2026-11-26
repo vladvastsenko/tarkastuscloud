@@ -22,6 +22,7 @@ internal data class CustomDocument(val id: String = customId(), val template: Cu
 @Serializable
 internal data class CustomLibrary(val templates: List<CustomTemplate> = emptyList(), val documents: List<CustomDocument> = emptyList())
 internal class CustomStore(context: Context) {
+    companion object { private val lock = Any() }
     private val root = File(context.filesDir, "custom_reports").apply { mkdirs() }
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -34,20 +35,19 @@ internal class CustomStore(context: Context) {
     }
     private fun write(target: AtomicFile, bytes: ByteArray) {
         val out = target.startWrite()
-        try { out.write(bytes); target.finishWrite(out) }
+        try { out.write(bytes); out.fd.sync(); target.finishWrite(out); check(target.readFully().contentEquals(bytes)) { "Record verification failed" } }
         catch (e: Exception) { target.failWrite(out); throw e }
     }
     private fun record(kind: String,id: String): AtomicFile {
         val key = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
         return AtomicFile(File(records,"$kind-$key.json"))
     }
-    @Synchronized fun load(): CustomLibrary {
+    fun load(): CustomLibrary = synchronized(lock) {
         if (!marker.baseFile.exists()) {
             val legacy = readLegacy()
-            legacy.templates.forEach { saveTemplate(it) }
-            legacy.documents.forEach { saveDocument(it) }
+            legacy.templates.forEach { if (!record("t",it.id).baseFile.exists() && !File(record("t",it.id).baseFile.path+".bak").exists()) saveTemplate(it) }
+            legacy.documents.forEach { if (!record("d",it.id).baseFile.exists() && !File(record("d",it.id).baseFile.path+".bak").exists()) saveDocument(it) }
             write(marker,byteArrayOf(1))
-            return legacy
         }
         val files = records.listFiles() ?: error("Cannot list records")
         val names = files.map { it.name.removeSuffix(".bak") }.distinct()
@@ -57,18 +57,18 @@ internal class CustomStore(context: Context) {
         val documents = names.filter { it.startsWith("d-") && it.endsWith(".json") }.map {
             json.decodeFromString<CustomDocument>(AtomicFile(File(records,it)).readFully().decodeToString())
         }
-        return CustomLibrary(templates,documents)
+        CustomLibrary(templates,documents)
     }
-    @Synchronized fun saveDocument(value: CustomDocument) = write(record("d",value.id),json.encodeToString(value).encodeToByteArray())
-    @Synchronized fun saveTemplate(value: CustomTemplate) = write(record("t",value.id),json.encodeToString(value).encodeToByteArray())
-    @Synchronized fun save(value: CustomLibrary) {
+    fun saveDocument(value: CustomDocument) = synchronized(lock) { write(record("d",value.id),json.encodeToString(value).encodeToByteArray()) }
+    fun saveTemplate(value: CustomTemplate) = synchronized(lock) { write(record("t",value.id),json.encodeToString(value).encodeToByteArray()) }
+    fun save(value: CustomLibrary) = synchronized(lock) {
         value.templates.forEach { saveTemplate(it) }
         value.documents.forEach { saveDocument(it) }
     }
     // Called only on opening the editor, before any new attachments are created.
     // Retain recent unreferenced files to tolerate interrupted imports or recovery.
-    fun cleanUnused(value: CustomLibrary) {
-        val used = (value.documents + readLegacy().documents).flatMap { it.attachments.values.flatten() }.toSet()
+    fun cleanUnused(value: CustomLibrary) = synchronized(lock) {
+        val used = (value.documents + load().documents + readLegacy().documents).flatMap { it.attachments.values.flatten() }.toSet()
         val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
         root.listFiles()?.forEach { candidate ->
             if (candidate.isFile && candidate.name.matches(Regex("[0-9a-fA-F-]{36}\\.(image|png)")) &&
