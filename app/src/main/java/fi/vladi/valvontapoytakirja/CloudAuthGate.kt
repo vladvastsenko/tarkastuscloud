@@ -62,6 +62,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var register by remember { mutableStateOf(false) }
+    var showPremiumTerms by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var languageMenu by remember { mutableStateOf(false) }
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
@@ -95,6 +96,16 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
                 error = localizedAuthError(context, exception, R.string.google_failed)
             }
         }
+    }
+    if (showPremiumTerms && !signedIn && !guest) {
+        val terms = premiumTerms(AppLanguage.selected(context))
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showPremiumTerms = false },
+            title = { Text("Tarkastus Cloud Premium") },
+            text = { Text(terms.first) },
+            confirmButton = { TextButton(onClick = { showPremiumTerms = false; register = true }) { Text(terms.second) } },
+            dismissButton = { TextButton(onClick = { showPremiumTerms = false }) { Text(stringResource(R.string.back)) } }
+        )
     }
     if (guest && !signedIn) {
         content({ guest = false; guestPrefs.edit().putBoolean("enabled", false).apply() })
@@ -199,7 +210,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
                 }
             }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (register) stringResource(R.string.create_account) else stringResource(R.string.email_sign_in)) }
             // Separate rows prevent long translations from clipping the password-reset action.
-            TextButton(onClick = { register = !register; error = null }, enabled = !busy,
+            TextButton(onClick = { if (register) register = false else showPremiumTerms = true; error = null }, enabled = !busy,
                 modifier = Modifier.fillMaxWidth()) {
                 Text(if (register) stringResource(R.string.already_registered) else stringResource(R.string.new_user))
             }
