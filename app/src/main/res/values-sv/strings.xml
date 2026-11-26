@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Förhandsgranska PDF</string>
     <string name="ui_preview_unavailable">Ingen PDF-visare är installerad</string>
     <string name="guest_continue">Fortsätt utan registrering</string>
-    <string name="guest_explanation">Skapa och spara rapporter lokalt. Molnsynkronisering kräver inloggning.</string>
+    <string name="guest_explanation">Registrering behövs endast för Premium. Skapa, redigera och spara rapporter lokalt gratis utan konto. Premium ger molnsynkronisering och tar bort reklam.</string>
     <string name="guest_local_notice">Gästläge: rapporter sparas bara på den här enheten. Molnsynkronisering kräver inloggning.</string>
     <string name="guest_sign_in">Logga in / Registrera dig</string>
     <string name="guest_cloud_required">Molnsynkronisering kräver inloggning.</string>
