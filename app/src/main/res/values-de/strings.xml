@@ -158,7 +158,7 @@
     <string name="cloud_restore_error">Wiederherstellung fehlgeschlagen: %1$s</string>
     <string name="cloud_unknown_error">Unbekannter Fehler</string>
     <string name="guest_continue">Ohne Registrierung fortfahren</string>
-    <string name="guest_explanation">Erstellen und speichern Sie Berichte lokal. Cloud-Synchronisierung erfordert eine Anmeldung.</string>
+    <string name="guest_explanation">Eine Registrierung ist nur für Premium erforderlich. Berichte lassen sich ohne Konto kostenlos erstellen, bearbeiten und lokal speichern. Premium bietet Cloud-Synchronisierung und entfernt Werbung.</string>
     <string name="guest_local_notice">Gastmodus: Berichte werden nur auf diesem Gerät gespeichert. Cloud-Synchronisierung erfordert eine Anmeldung.</string>
     <string name="guest_sign_in">Anmelden / Registrieren</string>
     <string name="guest_cloud_required">Cloud-Synchronisierung erfordert eine Anmeldung.</string>
