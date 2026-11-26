@@ -24,5 +24,28 @@ internal class PremiumBilling(context: Context, onPurchases: (BillingResult, Lis
         }
     }
 
+    fun queryOffer(onResult: (BillingResult, ProductDetails?, ProductDetails.SubscriptionOfferDetails?) -> Unit) {
+        val product = QueryProductDetailsParams.Product.newBuilder()
+            .setProductId(PREMIUM_PRODUCT).setProductType(BillingClient.ProductType.SUBS).build()
+        client.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(listOf(product)).build()) { result, response ->
+            val details = response.productDetailsList.firstOrNull { it.productId == PREMIUM_PRODUCT }
+            val offer = details?.subscriptionOfferDetails?.firstOrNull {
+                it.basePlanId == PREMIUM_BASE_PLAN && it.offerId == null
+            }
+            onResult(result, details, offer)
+        }
+    }
+
+    // Caller must have a verified backend configured before enabling checkout.
+    fun launchPurchase(activity: android.app.Activity, details: ProductDetails,
+        offer: ProductDetails.SubscriptionOfferDetails, accountHash: String): BillingResult {
+        require(details.productId == PREMIUM_PRODUCT && offer.basePlanId == PREMIUM_BASE_PLAN)
+        require(accountHash.matches(Regex("[a-f0-9]{64}")))
+        return client.launchBillingFlow(activity, BillingFlowParams.newBuilder()
+            .setObfuscatedAccountId(accountHash)
+            .setProductDetailsParamsList(listOf(BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(details).setOfferToken(offer.offerToken).build())).build())
+    }
+
     fun close() = client.endConnection()
 }

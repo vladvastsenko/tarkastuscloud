@@ -42,6 +42,12 @@ android {
         buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("cloud")
     }
 
+    testOptions {
+        unitTests.all {
+            it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
