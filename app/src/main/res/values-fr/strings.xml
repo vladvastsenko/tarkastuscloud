@@ -158,7 +158,7 @@
     <string name="cloud_restore_error">Échec de la restauration : %1$s</string>
     <string name="cloud_unknown_error">Erreur inconnue</string>
     <string name="guest_continue">Continuer sans inscription</string>
-    <string name="guest_explanation">Créez et enregistrez les rapports localement. La synchronisation cloud nécessite une connexion.</string>
+    <string name="guest_explanation">Un compte est nécessaire uniquement pour Premium. Créez, modifiez et enregistrez vos rapports localement gratuitement, sans compte. Premium ajoute la synchronisation cloud et supprime les publicités.</string>
     <string name="guest_local_notice">Mode invité : les rapports sont stockés uniquement sur cet appareil. La synchronisation cloud nécessite une connexion.</string>
     <string name="guest_sign_in">Connexion / Inscription</string>
     <string name="guest_cloud_required">La synchronisation cloud nécessite une connexion.</string>
