@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -100,12 +101,12 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             fi.vladi.valvontapoytakirja.cloud.recoverInterruptedRestore(java.io.File(applicationInfo.dataDir, "files"))
         }
         if (recovery.isFailure) {
-            setContent { MaterialTheme { RecoveryScreen(File(applicationInfo.dataDir, "files")) { recreate() } } }
+            setContent { MaterialTheme { Box(Modifier.fillMaxSize().safeDrawingPadding()) { RecoveryScreen(File(applicationInfo.dataDir, "files")) { recreate() } } } }
             return
         }
         setContent {
             MaterialTheme(colorScheme = fi.vladi.tarkastuspoytakirja.TarkastusBlueColors) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = MaterialTheme.colorScheme.background) {
                     var languageChosen by remember { mutableStateOf(AppLanguage.hasSelection(this@MainActivity)) }
                     if (!languageChosen) {
                         FirstLaunchLanguageScreen { language ->
