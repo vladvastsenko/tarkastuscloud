@@ -18,16 +18,33 @@ internal fun isDeveloperTestAccount(): Boolean {
 internal object PremiumAccess {
     private data class Lease(val verified: VerifiedSubscription, val deadline: Long)
     @Volatile private var lease: Lease? = null
-    @Volatile var developerFree = false
+    private val developerMode = DeveloperTestMode()
+    fun resetDeveloperMode() = developerMode.reset()
+    fun setDeveloperFree(free: Boolean) {
+        if (isDeveloperTestAccount()) developerMode.select(FirebaseAuth.getInstance().currentUser?.uid, free)
+    }
+    fun developerPremium(): Boolean = isDeveloperTestAccount() &&
+        developerMode.premium(FirebaseAuth.getInstance().currentUser?.uid)
     fun clear() { lease = null }
     fun update(verified: VerifiedSubscription?, deadline: Long) {
         lease = if (verified == null || BuildConfig.OFFLINE_PREVIEW) null else Lease(verified, deadline)
     }
     fun requireCloud() {
         check(!BuildConfig.OFFLINE_PREVIEW) { "Premium required" }
-        if (isDeveloperTestAccount()) { check(!developerFree) { "Premium required" }; return }
+        if (isDeveloperTestAccount()) { check(developerPremium()) { "Premium required" }; return }
         val current = lease
         check(current != null && permitsCloudLease(BuildConfig.OFFLINE_PREVIEW, current.verified,
             FirebaseAuth.getInstance().currentUser?.uid, System.currentTimeMillis(), SystemClock.elapsedRealtime(), current.deadline)) { "Premium required" }
+    }
+}
+
+internal class DeveloperTestMode {
+    private data class Selection(val uid: String, val free: Boolean)
+    @Volatile private var selection: Selection? = null
+    fun reset() { selection = null }
+    fun select(uid: String?, free: Boolean) { selection = uid?.let { Selection(it, free) } }
+    fun premium(uid: String?): Boolean {
+        val current = selection
+        return uid != null && !(current?.uid == uid && current.free)
     }
 }
