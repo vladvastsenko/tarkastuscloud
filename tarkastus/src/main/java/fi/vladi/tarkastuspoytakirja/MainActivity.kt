@@ -157,7 +157,7 @@ private fun TarkastusApp() {
         }
     }
 
-    fun applySettingsSnapshot(report: InspectionReport): InspectionReport = report.copy(
+    fun applySettingsSnapshot(report: InspectionReport): InspectionReport = if (report.reportType == "freeform" && !report.useSharedSettings) report.copy(settingsSnapshotCreated = true, logoPath = "", headerText = "", footerText = "", inspectorName = "", inspectorCertificateNumber = "", inspectorPhone = "", inspectorEmail = "", signatureStrokes = emptyList(), signatureImagePath = "") else report.copy(
         inspectorName = inspectors.singleOrNull()?.name ?: appSettings.inspectorName,
         inspectorCertificateNumber = inspectors.singleOrNull()?.certificateNumber ?: appSettings.inspectorCertificateNumber,
         inspectorPhone = inspectors.singleOrNull()?.phone ?: appSettings.inspectorPhone,
@@ -239,6 +239,8 @@ private fun TarkastusApp() {
             onCreate = { type ->
                 saveReport(applySettingsSnapshot(InspectionReport(
                     reportType = type,
+                    customFields = if (type == "freeform") listOf(CustomReportField()) else emptyList(),
+                    customFieldsTitle = if (type == "freeform") "" else "OMAT LISÄKENTÄT",
                     inspectionDate = LocalDate.now().toString(),
                     observations = listOf(InspectionObservation())
                 )))
@@ -461,7 +463,7 @@ private fun EditorScreen(
         val reportLanguage = report.pdfLanguage.ifBlank {
             AppLanguage.selected(pdfContext)
         }
-        if (inspectors.size > 1) {
+        if (inspectors.size > 1 && (report.reportType != "freeform" || report.useSharedSettings)) {
             var inspectorMenuExpanded by remember(report.id) { mutableStateOf(false) }
             Text(stringResource(R.string.inspector_heading_localized), fontWeight = FontWeight.SemiBold)
             Box {
@@ -511,6 +513,19 @@ private fun EditorScreen(
         }
         Text(stringResource(R.string.loc_fill), style = MaterialTheme.typography.bodySmall)
 
+        val freeform = report.reportType == "freeform"
+        if (freeform) {
+            val settingsLabel = when (AppLanguage.selected(pdfContext)) {
+                "ru" -> "Использовать настройки"; "fi" -> "Käytä asetuksia"; "sv" -> "Använd inställningar"; "nb" -> "Bruk innstillinger"; "da" -> "Brug indstillinger"; "et" -> "Kasuta seadeid"; "lv" -> "Izmantot iestatījumus"; "lt" -> "Naudoti nustatymus"; "fr" -> "Utiliser les paramètres"; "es" -> "Usar ajustes"; "it" -> "Usa impostazioni"; "de" -> "Einstellungen verwenden"; "pl" -> "Użyj ustawień"; else -> "Use settings"
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(settingsLabel, Modifier.weight(1f))
+                androidx.compose.material3.Switch(checked = report.useSharedSettings, onCheckedChange = { enabled ->
+                    onChange(report.copy(useSharedSettings = enabled))
+                })
+            }
+        }
+        if (!freeform || report.useSharedSettings) {
         SectionTitle(stringResource(R.string.loc_site_parties))
         Field(stringResource(R.string.loc4_folder_path), report.folderPath) {
             onChange(report.copy(folderPath = it.trim('/')))
@@ -534,7 +549,7 @@ private fun EditorScreen(
                     clientEmail = customer?.email.orEmpty(),
                     siteName = "",
                     siteAddress = "",
-                    customFields = emptyList()
+                    customFields = if (freeform) report.customFields else emptyList()
                 ))
             }
         )
@@ -555,7 +570,7 @@ private fun EditorScreen(
                             siteId = id,
                             siteName = site?.name.orEmpty(),
                             siteAddress = site?.address.orEmpty(),
-                            customFields = site?.fieldDefinitions?.map { definition ->
+                            customFields = if (freeform) report.customFields else site?.fieldDefinitions?.map { definition ->
                                 CustomReportField(label = definition.label, sourceDefinitionId = definition.id)
                             }.orEmpty()
                         ))
@@ -585,6 +600,8 @@ private fun EditorScreen(
             Field(stringResource(R.string.loc_email), report.clientEmail) { onChange(report.copy(clientEmail = it)) }
         }
 
+        }
+        if (!freeform) {
         SectionTitle(stringResource(R.string.loc_purpose_section))
         Field(stringResource(R.string.loc_purpose), report.purposeAndScope, minLines = 4) {
             onChange(report.copy(purposeAndScope = it))
@@ -595,6 +612,7 @@ private fun EditorScreen(
             onChange(report.copy(generalObservations = it))
         }
 
+        }
         SectionTitle(stringResource(R.string.loc_custom_section))
         Field(stringResource(R.string.loc_pdf_heading), if (report.customFieldsTitle == "OMAT LISÄKENTÄT") stringResource(R.string.audit_custom_fields_title) else report.customFieldsTitle) {
             onChange(report.copy(customFieldsTitle = it))
@@ -627,11 +645,13 @@ private fun EditorScreen(
             modifier = Modifier.fillMaxWidth()
         ) { Text(stringResource(R.string.ui_add_field)) }
 
+        if (!freeform) {
         ChecklistEditor(report.checklist, AppLanguage.selected(pdfContext)) { items ->
             onChange(report.copy(checklist = items))
         }
         MeasurementEditor(report.measurements, AppLanguage.selected(pdfContext)) { items ->
             onChange(report.copy(measurements = items))
+        }
         }
         SectionTitle(stringResource(R.string.loc_observations_section))
         report.observations.forEachIndexed { index, observation ->
@@ -712,11 +732,13 @@ private fun EditorScreen(
             modifier = Modifier.fillMaxWidth()
         ) { Text(stringResource(R.string.ui_add_item)) }
 
+        if (!freeform) {
         SectionTitle(stringResource(R.string.loc_summary_section))
         Field(stringResource(R.string.loc_conclusions), report.summary, minLines = 4) {
             onChange(report.copy(summary = it))
         }
 
+        }
         DateField(stringResource(R.string.loc_date), report.inspectionDate) {
             onChange(report.copy(inspectionDate = it))
         }
