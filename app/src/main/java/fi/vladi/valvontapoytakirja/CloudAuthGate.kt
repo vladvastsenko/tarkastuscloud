@@ -63,7 +63,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     var register by remember { mutableStateOf(false) }
     var showPremiumTerms by remember { mutableStateOf(false) }
     var simulatedCheckout by remember { mutableStateOf(false) }
-    var googleRegistrationToken by remember { mutableStateOf<String?>(null) }
+    var googleRegistrationIdentity by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val declineCheckout: () -> Unit = {
         auth.signOut()
@@ -135,7 +135,12 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                     .getResult(ApiException::class.java)
                 val token = account.idToken ?: throw IllegalStateException("Missing Google ID token")
                 if (!developerGoogle) {
-                    if (register && googleRegistrationToken != null && paidPurchase != null) {
+                    if (register && googleRegistrationIdentity != null && paidPurchase != null) {
+                        if (account.id != googleRegistrationIdentity) {
+                            busy = false
+                            error = context.getString(R.string.google_failed)
+                            return@rememberLauncherForActivityResult
+                        }
                         registrationPurchase.completeGoogle(paidPurchase!!, token) { customToken ->
                             if (customToken == null) {
                                 busy = false
@@ -143,7 +148,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                             } else auth.signInWithCustomToken(customToken).addOnCompleteListener { task ->
                                 busy = false
                                 if (task.isSuccessful) {
-                                    googleRegistrationToken = null
+                                    googleRegistrationIdentity = null
                                     register = false
                                     guest = false
                                     guestPrefs.edit().putBoolean("enabled", false).apply()
@@ -156,7 +161,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                             val data = if (result.isSuccessful) result.result.data as? Map<*, *> else null
                             val customToken = data?.get("customToken") as? String
                             if (data?.get("registrationRequired") == true) {
-                                googleRegistrationToken = token
+                                googleRegistrationIdentity = account.id ?: throw IllegalStateException("Missing Google identity")
                                 busy = false
                                 showPremiumTerms = true
                             } else if (customToken != null) {
@@ -175,20 +180,14 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         }
                     return@rememberLauncherForActivityResult
                 }
-                val login = if (developerGoogle) {
+                val login = run {
                     if (!account.email.equals("vlad.vastsenko@gmail.com", ignoreCase = true)) {
                         busy = false
                         showPremiumTerms = true
                         return@rememberLauncherForActivityResult
                     }
                     auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null))
-                } else FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("signInExistingGoogle")
-                    .call(mapOf("idToken" to token))
-                    .continueWithTask { result ->
-                        val customToken = (result.result.data as? Map<*, *>)?.get("customToken") as? String
-                            ?: throw IllegalStateException("Missing server credential")
-                        auth.signInWithCustomToken(customToken)
-                    }
+                }
                 login.addOnCompleteListener { task ->
                     busy = false
                     if (task.isSuccessful) {
@@ -208,8 +207,8 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     }
     if (showPremiumTerms && !signedIn && !guest) {
         PremiumRegistrationScreen(onContinue = { showPremiumTerms = false; if (developerGoogle) simulatedCheckout = true else register = true },
-            onBack = { showPremiumTerms = false; googleRegistrationToken = null },
-            onFree = { showPremiumTerms = false; googleRegistrationToken = null; guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
+            onBack = { showPremiumTerms = false; googleRegistrationIdentity = null },
+            onFree = { showPremiumTerms = false; googleRegistrationIdentity = null; guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
         return
     }
     if (simulatedCheckout && developerGoogle && !signedIn && !guest) {
@@ -304,7 +303,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 error = null
                 message = null
                 val address = email.trim()
-                if (googleRegistrationToken == null && (address.isBlank() || password.length < (if (register) 8 else 6))) {
+                if (googleRegistrationIdentity == null && (address.isBlank() || password.length < (if (register) 8 else 6))) {
                     busy = false
                     error = context.getString(R.string.password_short)
                 } else {
@@ -344,7 +343,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         }
                         return@Button
                     }
-                    if (register && googleRegistrationToken != null) {
+                    if (register && googleRegistrationIdentity != null) {
                         try { launcher.launch(GoogleSignIn.getClient(context, options).signInIntent) }
                         catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
                         return@Button
@@ -374,7 +373,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 }
             }, enabled = !busy && (!register || billingReady), modifier = Modifier.fillMaxWidth()) { Text(if (register) stringResource(R.string.create_account) else stringResource(R.string.email_sign_in)) }
             // Separate rows prevent long translations from clipping the password-reset action.
-            OutlinedButton(onClick = { if (register) { register = false; googleRegistrationToken = null } else showPremiumTerms = true; error = null }, enabled = !busy,
+            OutlinedButton(onClick = { if (register) { register = false; googleRegistrationIdentity = null } else showPremiumTerms = true; error = null }, enabled = !busy,
                 modifier = Modifier.fillMaxWidth()) {
                 Text(if (register) stringResource(R.string.already_registered) else stringResource(R.string.new_user))
             }
