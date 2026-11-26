@@ -1,11 +1,9 @@
 package fi.vladi.valvontapoytakirja
 
-import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,8 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -49,7 +45,6 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import fi.vladi.tarkastuspoytakirja.AppLanguage
 
 @Composable
 internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit) {
@@ -66,7 +61,6 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
     var register by remember { mutableStateOf(false) }
     var showPremiumTerms by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
-    var languageMenu by remember { mutableStateOf(false) }
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
     val options = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -129,21 +123,11 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
         ) {
             Text("Tarkastus Cloud", style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.guest_explanation), style = MaterialTheme.typography.bodyMedium)
-            Box {
-                OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(AppLanguage.flaggedLabel(AppLanguage.selected(context)) + " ▾")
-                }
-                DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
-                    AppLanguage.options.forEach { (code, label) ->
-                        DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
-                            languageMenu = false
-                            if (AppLanguage.selected(context) != code) {
-                                AppLanguage.save(context, code)
-                                (context as? Activity)?.recreate()
-                            }
-                        })
-                    }
-                }
+            Button(onClick = {
+                guestPrefs.edit().putBoolean("enabled", true).apply()
+                guest = true
+            }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC8E6C9), contentColor = Color(0xFF173D20)), modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.guest_continue))
             }
             Button(
                 onClick = {
@@ -218,12 +202,6 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
                 }
             }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.forgot_password))
-            }
-            Button(onClick = {
-                guestPrefs.edit().putBoolean("enabled", true).apply()
-                guest = true
-            }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC8E6C9), contentColor = Color(0xFF173D20)), modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.guest_continue))
             }
             if (busy) CircularProgressIndicator()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
