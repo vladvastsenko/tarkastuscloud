@@ -285,6 +285,7 @@ internal object PdfArchiveSyncManager {
     }
 
     private fun upload(context: Context, root: DocumentFile, path: String, source: Uri) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val parent = ensureRemoteParent(root, path)
         val name = path.substringAfterLast('/')
         parent.findFile(name)?.let { existing ->
@@ -305,6 +306,7 @@ internal object PdfArchiveSyncManager {
     }
 
     private fun download(context: Context, source: DocumentFile, path: String) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val temporary = File(context.cacheDir, "pdf_sync_${System.currentTimeMillis()}_${path.hashCode()}.pdf")
         try {
             context.contentResolver.openInputStream(source.uri)?.use { input ->
@@ -328,6 +330,7 @@ internal object PdfArchiveSyncManager {
     }
 
     private fun saveConflict(context: Context, conflictRoot: DocumentFile, path: String, local: Uri) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val safeName = path.replace('/', '_').replace('\\', '_')
         val target = conflictRoot.createFile("application/pdf", "${safeName}_local_${stamp}.pdf")

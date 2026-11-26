@@ -310,6 +310,7 @@ object CloudSyncManager {
     }
 
     private fun upload(context: Context, root: DocumentFile, path: String, source: File) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         // Persist this exact report version before modifying the shared head.
         preserveReportVersion(context, root, path, source)
         val parent = ensureRemoteParent(root, path)
@@ -383,6 +384,7 @@ object CloudSyncManager {
     }
 
     private fun download(context: Context, source: DocumentFile, localRoot: File, path: String) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val target = File(localRoot, path)
         val canonicalRoot = localRoot.canonicalFile
         val canonicalTarget = target.canonicalFile
@@ -420,6 +422,7 @@ object CloudSyncManager {
     }
 
     private fun saveConflict(context: Context, conflictRoot: DocumentFile, path: String, localFile: File) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val date = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val safeName = path.replace('/', '_').replace('\\', '_')
         val target = conflictRoot.createFile("application/octet-stream", "${safeName}_local_${date}.conflict")

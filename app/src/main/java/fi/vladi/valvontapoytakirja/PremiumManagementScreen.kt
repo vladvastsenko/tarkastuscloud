@@ -35,6 +35,7 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Tarkastus Cloud Premium", style = MaterialTheme.typography.headlineMedium)
         Text(if (controller.active) "Premium" else subscriptionLabel(lang, SubscriptionState.FREE))
+        Text(subscriptionLabel(lang, controller.subscriptionState))
         Text(premiumTerms(lang).first)
         controller.offer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice?.let { Text(it) }
         if (BuildConfig.DEBUG && BuildConfig.OFFLINE_PREVIEW) {

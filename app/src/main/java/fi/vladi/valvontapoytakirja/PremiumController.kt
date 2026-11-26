@@ -13,11 +13,14 @@ internal class PremiumController {
         private set
     var error by mutableStateOf(false)
         private set
+    var subscriptionState by mutableStateOf(SubscriptionState.FREE)
+        private set
     var simulatedState by mutableStateOf(SubscriptionState.FREE)
         private set
     fun simulate(state: SubscriptionState) {
         if (!BuildConfig.DEBUG || !BuildConfig.OFFLINE_PREVIEW) return
         simulatedState = state
+        subscriptionState = state
         active = VerifiedSubscription("preview", state, Long.MAX_VALUE).permitsPremium("preview", 0)
     }
     var busy by mutableStateOf(false)
@@ -28,8 +31,8 @@ internal class PremiumController {
     var billing: PremiumBilling? = null
     private var generation = 0
     private var deadline = 0L
-    fun invalidate() { PremiumAccess.clear(); generation++; active = false; busy = false; deadline = 0L }
-    fun tick() { if (SystemClock.elapsedRealtime() >= deadline) active = false }
+    fun invalidate() { PremiumAccess.clear(); generation++; subscriptionState = SubscriptionState.FREE; active = false; busy = false; deadline = 0L }
+    fun tick() { if (active && SystemClock.elapsedRealtime() >= deadline) { active = false; subscriptionState = SubscriptionState.UNKNOWN; PremiumAccess.clear() } }
     fun refresh() {
         val client = billing ?: return
         if (!ready || busy || uid == null) return
@@ -41,6 +44,7 @@ internal class PremiumController {
             if (epoch != generation) return@queryPurchases
             val purchase = purchases.firstOrNull { it.purchaseState == Purchase.PurchaseState.PURCHASED && it.accountIdentifiers?.obfuscatedAccountId == account?.let(::premiumAccountHash) }
             if (result.responseCode != BillingClient.BillingResponseCode.OK || purchase == null) {
+                subscriptionState = if (result.responseCode != BillingClient.BillingResponseCode.OK) SubscriptionState.UNKNOWN else if (purchases.any { it.purchaseState == Purchase.PurchaseState.PENDING && it.accountIdentifiers?.obfuscatedAccountId == account?.let(::premiumAccountHash) }) SubscriptionState.PENDING else SubscriptionState.FREE
                 PremiumAccess.clear(); busy = false; active = false; error = result.responseCode != BillingClient.BillingResponseCode.OK; return@queryPurchases
             }
             val start = SystemClock.elapsedRealtime()
@@ -49,6 +53,7 @@ internal class PremiumController {
                     val duration = ((verified?.expiresAt ?: 0L) - System.currentTimeMillis()).coerceIn(0L, 300000L)
                     deadline = start + duration
                     active = verified != null && SystemClock.elapsedRealtime() < deadline
+                    subscriptionState = verified?.state ?: SubscriptionState.UNKNOWN
                     PremiumAccess.update(if (active) verified else null, deadline)
                     error = verified == null
                     busy = false
