@@ -72,6 +72,14 @@ jobs:
             "$signer" verify --verbose --print-certs "$apk" | tee "$apk.cert.txt"
             sha256sum "$apk" > "$apk.sha256"
           done
+      - name: Publish unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v4
         with:
           name: Tarkastus-Cloud-0.1.0-Authenticated

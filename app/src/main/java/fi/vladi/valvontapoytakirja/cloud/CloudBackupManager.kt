@@ -61,6 +61,8 @@ object CloudBackupManager {
                 zip.closeEntry()
 
                 val root = context.filesDir
+                var entries = 1
+                var bytes = 0L
                 root.walkTopDown()
                     .filter { it.isFile }
                     .forEach { file ->
@@ -68,14 +70,25 @@ object CloudBackupManager {
                         require(relative.isNotBlank() && !relative.startsWith("../")) {
                             "Virheellinen tiedostopolku varmuuskopiossa."
                         }
+                        require(++entries <= MAX_ENTRIES)
+                        require(file.canonicalPath.startsWith(root.canonicalPath + File.separator))
                         zip.putNextEntry(ZipEntry("files/$relative"))
-                        FileInputStream(file).buffered().use { input -> input.copyTo(zip) }
+                        FileInputStream(file).buffered().use { input ->
+                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                            while (true) {
+                                val n = input.read(buffer)
+                                if (n < 0) break
+                                bytes += n
+                                require(bytes <= MAX_UNPACKED_BYTES) { "Backup exceeds restore limit" }
+                                zip.write(buffer,0,n)
+                            }
+                        }
                         zip.closeEntry()
                     }
             }
 
             val displayName = "TarkastusCloud_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
-            folder.findFile(displayName)?.delete()
+            check(folder.findFile(displayName) == null) { "Backup already exists" }
             val target = folder.createFile("application/zip", displayName)
                 ?: error("Varmuuskopiotiedostoa ei voitu luoda Google Driveen.")
             try {
@@ -114,14 +127,14 @@ object CloudBackupManager {
                 val displayName = cursor.getString(nameColumn) ?: continue
                 val relativePath = cursor.getString(pathColumn) ?: continue
                 val subPath = relativePath.removePrefix(basePath).trim('/')
-                if (subPath.isBlank() || subPath.split('/').any { it == ".." || it.isBlank() }) continue
+                if (subPath.isBlank() || subPath.split('/').any { it == ".." || it == "." || it.isBlank() }) continue
                 var folder = destinationRoot
                 subPath.split('/').forEach { segment ->
                     folder = folder.findFile(segment) ?: folder.createDirectory(segment) ?: error("Drive-kansiota ei voitu luoda.")
                 }
                 val existing = folder.findFile(displayName)
-                existing?.delete()
-                val target = folder.createFile("application/pdf", displayName)
+                val temporaryName = if (existing == null) displayName else "pending-${java.util.UUID.randomUUID()}.pdf"
+                val target = folder.createFile("application/pdf", temporaryName)
                     ?: error("PDF-tiedostoa ei voitu luoda Google Driveen.")
                 val sourceUri = android.content.ContentUris.withAppendedId(collection, cursor.getLong(idColumn))
                 try {
@@ -130,6 +143,15 @@ object CloudBackupManager {
                             input.copyTo(output)
                         } ?: error("PDF-tiedostoa ei voitu kirjoittaa Driveen.")
                     } ?: error("PDF-tiedostoa ei voitu lukea.")
+                    if (existing != null) {
+                        val oldName = "previous-${java.util.UUID.randomUUID()}.pdf"
+                        check(existing.renameTo(oldName)) { "Cannot preserve previous PDF" }
+                        if (!target.renameTo(displayName)) {
+                            existing.renameTo(displayName)
+                            error("Cannot publish PDF; previous copy retained")
+                        }
+                        existing.delete()
+                    }
                     copied++
                 } catch (error: Throwable) {
                     target.delete()
@@ -180,7 +202,12 @@ object CloudBackupManager {
 
                     if (name == MANIFEST) {
                         val manifestBytes = ByteArray(128)
-                        val count = zip.read(manifestBytes)
+                        var count = 0
+                        while (count < manifestBytes.size) {
+                            val n = zip.read(manifestBytes, count, manifestBytes.size - count)
+                            if (n < 0) break
+                            count += n
+                        }
                         require(count in 1..127 && zip.read() == -1) { "Varmuuskopion tunnistetiedot ovat virheelliset." }
                         val text = String(manifestBytes, 0, count, Charsets.UTF_8).trim()
                         require(text == MANIFEST_CONTENT) { "Tiedosto ei ole Tarkastus-varmuuskopio." }
@@ -194,6 +221,7 @@ object CloudBackupManager {
                             "Varmuuskopiossa on kielletty tiedostopolku."
                         }
                         if (entry.isDirectory) {
+                            require(zip.read() == -1) { "Directory entry contains data" }
                             destination.mkdirs()
                         } else {
                             destination.parentFile?.mkdirs()
