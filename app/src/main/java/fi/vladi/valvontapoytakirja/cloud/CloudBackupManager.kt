@@ -76,7 +76,7 @@ object CloudBackupManager {
         val temp = File.createTempFile("local-backup-", ".zip", context.cacheDir)
         try {
             writeArchive(context, temp)
-            context.contentResolver.openOutputStream(uri, "w")?.use { output ->
+            context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
                 temp.inputStream().buffered().use { it.copyTo(output) }
             } ?: error("Cannot write backup")
         } finally { temp.delete() }
@@ -204,7 +204,8 @@ object CloudBackupManager {
                 check(previous.renameTo(current)) { "Palautus epäonnistui. Alkuperäiset tiedot ovat turvakansiossa." }
                 error("Varmuuskopion käyttöönotto epäonnistui. Nykyiset tiedot palautettiin.")
             }
-            previous.deleteRecursively()
+            val retained = File(current.parentFile, "tarkastus_retained_" + java.util.UUID.randomUUID())
+            check(previous.renameTo(retained)) { "Restored data installed; previous data retained in recovery folder" }
             return "Varmuuskopio palautettiin onnistuneesti."
         } catch (error: Throwable) {
             staging.deleteRecursively()
