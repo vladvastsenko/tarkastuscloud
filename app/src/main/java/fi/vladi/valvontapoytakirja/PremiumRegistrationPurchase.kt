@@ -51,5 +51,16 @@ internal class PremiumRegistrationPurchase(context: Context) {
                 }
         }
     }
+    fun completeGoogle(purchase: Purchase, idToken: String, onResult: (String?) -> Unit) {
+        prepare(purchase) { permit ->
+            if (permit == null) { onResult(null); return@prepare }
+            FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("completePremiumGoogleRegistration")
+                .call(mapOf("purchaseToken" to purchase.purchaseToken, "session" to session,
+                    "permit" to permit, "idToken" to idToken))
+                .addOnCompleteListener { task ->
+                    onResult(if (task.isSuccessful) (task.result.data as? Map<*, *>)?.get("customToken") as? String else null)
+                }
+        }
+    }
     private companion object { val lock = Any() }
 }
