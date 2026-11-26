@@ -46,7 +46,7 @@ async function consumePermit(db, permit, session, uid, now = Date.now()) {
 module.exports = {hash,secret,assertPurchase,issuePermit,consumePermit};
 
 /** Reserve a stable server-owned UID before calling Firebase Auth. */
-async function reserveAccount(db, permit, session, email, now = Date.now()) {
+async function reserveAccount(db, permit, session, email, now = Date.now(), verifiedUntil = 0) {
   if (!validSecret(permit) || !validSecret(session) || typeof email !== "string" || !email || email.length > 254) throw new Error("invalid registration");
   const ref = db.collection("premiumRegistrationPermits").doc(hash(permit));
   return db.runTransaction(async tx => {
@@ -60,7 +60,7 @@ async function reserveAccount(db, permit, session, email, now = Date.now()) {
       if (!p.used || c.emailHash !== emailHash || p.uid !== c.uid) throw new Error("claim unavailable");
       return c.uid;
     }
-    if (p.used || p.expiresAt <= now) throw new Error("permit unavailable");
+    if (p.used || (p.expiresAt <= now && verifiedUntil <= now)) throw new Error("permit unavailable");
     const uid = "premium_" + secret();
     tx.update(ref,{used:true,uid,usedAt:now});
     tx.update(claim,{uid,emailHash,boundAt:now});
