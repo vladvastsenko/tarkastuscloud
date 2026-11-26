@@ -50,6 +50,8 @@ internal class CustomStore(private val root: File) {
         val key = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
         return AtomicFile(File(records,"$kind-$key.json"))
     }
+    private fun tombstone(kind: String, id: String) = AtomicFile(File(record(kind,id).baseFile.path + ".deleted"))
+    private fun deleted(kind: String, id: String) = tombstone(kind,id).baseFile.exists()
     fun load(): CustomLibrary = synchronized(lock) {
         if (!marker.baseFile.exists()) {
             val legacy = readLegacy()
@@ -65,22 +67,26 @@ internal class CustomStore(private val root: File) {
         val documents = names.filter { it.startsWith("d-") && it.endsWith(".json") }.map {
             json.decodeFromString<CustomDocument>(AtomicFile(File(records,it)).readFully().decodeToString())
         }
-        CustomLibrary(templates,documents)
+        CustomLibrary(templates.filterNot { deleted("t",it.id) },documents.filterNot { deleted("d",it.id) })
     }
     fun deleteDocument(id: String) = synchronized(lock) {
+        load()
+        write(tombstone("d",id),byteArrayOf(1))
         val target = record("d", id)
         target.delete()
         check(!target.baseFile.exists() && !File(target.baseFile.path+".bak").exists())
         if (activeEditor() == "d:" + id) rememberEditor("")
     }
     fun deleteTemplate(id: String) = synchronized(lock) {
+        load()
+        write(tombstone("t",id),byteArrayOf(1))
         val target = record("t", id)
         target.delete()
         check(!target.baseFile.exists() && !File(target.baseFile.path+".bak").exists())
         if (activeEditor() == "t:" + id) rememberEditor("")
     }
-    fun saveDocument(value: CustomDocument) = synchronized(lock) { write(record("d",value.id),json.encodeToString(value).encodeToByteArray()) }
-    fun saveTemplate(value: CustomTemplate) = synchronized(lock) { write(record("t",value.id),json.encodeToString(value).encodeToByteArray()) }
+    fun saveDocument(value: CustomDocument) = synchronized(lock) { if (!deleted("d",value.id)) write(record("d",value.id),json.encodeToString(value).encodeToByteArray()) }
+    fun saveTemplate(value: CustomTemplate) = synchronized(lock) { if (!deleted("t",value.id)) write(record("t",value.id),json.encodeToString(value).encodeToByteArray()) }
     fun save(value: CustomLibrary) = synchronized(lock) {
         value.templates.forEach { saveTemplate(it) }
         value.documents.forEach { saveDocument(it) }
@@ -88,7 +94,7 @@ internal class CustomStore(private val root: File) {
     // Called only on opening the editor, before any new attachments are created.
     // Retain recent unreferenced files to tolerate interrupted imports or recovery.
     fun cleanUnused(value: CustomLibrary) = synchronized(lock) {
-        val used = (value.documents + load().documents + readLegacy().documents).flatMap { it.attachments.values.flatten() }.toSet()
+        val used = (value.documents + load().documents + readLegacy().documents.filterNot { deleted("d",it.id) }).flatMap { it.attachments.values.flatten() }.toSet()
         val cutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
         root.listFiles()?.forEach { candidate ->
             if (candidate.isFile && candidate.name.matches(Regex("[0-9a-fA-F-]{36}\\.(image|png)")) &&
