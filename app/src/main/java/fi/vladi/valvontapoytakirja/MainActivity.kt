@@ -168,6 +168,8 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { SharedDocumentsArchive.ensureFolder(context) }
     }
+    val premium = rememberPremiumController()
+    var showPremium by remember { mutableStateOf(false) }
     val consent = remember(context) { if (BuildConfig.OFFLINE_PREVIEW) null else AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent?.request() }
     var showSharedSettings by remember { mutableStateOf(false) }
@@ -176,25 +178,28 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
     var showUserGuide by remember { mutableStateOf(false) }
     var showCustomReport by remember { mutableStateOf(false) }
 
-    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
+    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
         when {
+            showPremium -> showPremium = false
             showUserGuide -> showUserGuide = false
             showCloudBackup -> showCloudBackup = false
             showSharedSettings -> showSharedSettings = false
             showManagement -> showManagement = false
         }
     }
-    if (showCustomReport) {
+    if (showPremium) {
+        PremiumManagementScreen(premium, onBack = { showPremium = false }, onSignIn = onSignOut)
+    } else if (showCustomReport) {
         CustomReportScreen(onBack = { showCustomReport = false })
     } else if (showUserGuide) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
-            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
-    } else if (showCloudBackup) {
+    } else if (showCloudBackup && premium.active) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { CloudBackupScreen(onBack = { showCloudBackup = false }) }
-            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
     } else if (showSharedSettings) {
         SharedSettingsApp(onBack = { showSharedSettings = false })
@@ -205,14 +210,15 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             onSettings = {
                 showSharedSettings = true
             },
-            onCloudBackup = { showCloudBackup = true },
+            onCloudBackup = { if (premium.active) showCloudBackup = true else showPremium = true },
+            onPremium = { showPremium = true },
             onUserGuide = { showUserGuide = true },
             onBack = { showManagement = false },
             onSignOut = onSignOut,
             consent = consent
                 )
             }
-            if ((consent?.canRequestAds == true)) CloudAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
     } else {
         UnifiedStartScreen(
@@ -221,7 +227,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             },
             onCustomReport = { showCustomReport = true },
             onManagement = { showManagement = true },
-            showAds = (consent?.canRequestAds == true)
+            showAds = (consent?.canRequestAds == true && !premium.active)
         )
     }
 }
@@ -285,6 +291,7 @@ private fun CloudAdMobBanner() {
 private fun ManagementScreen(
     onSettings: () -> Unit,
     onCloudBackup: () -> Unit,
+    onPremium: () -> Unit,
     onUserGuide: () -> Unit,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
@@ -325,6 +332,7 @@ private fun ManagementScreen(
                 }
             }
         }
+        OutlinedButton(onClick = onPremium, modifier = Modifier.fillMaxWidth()) { Text("Premium") }
         if (!guestMode) BiometricSettingsControl()
         else {
             Text(stringResource(R.string.bio_title))

@@ -8,6 +8,7 @@ internal class PremiumBilling(context: Context, onPurchases: (BillingResult, Lis
     private val client = BillingClient.newBuilder(context.applicationContext)
         .setListener { result, purchases -> onPurchases(result, purchases.orEmpty()) }
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+        .enableAutoServiceReconnection()
         .build()
 
     fun connect(onResult: (BillingResult) -> Unit) {
