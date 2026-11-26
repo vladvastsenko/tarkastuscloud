@@ -814,7 +814,11 @@ private fun PhotoCard(
     val displayPath = photo.annotatedPath.takeIf { it.isNotBlank() && File(it).exists() } ?: photo.filePath
     val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(initialValue = null, displayPath) {
         value = withContext(Dispatchers.IO) {
-            BitmapFactory.decodeFile(displayPath)?.asImageBitmap()
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(displayPath, bounds)
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1024) sample *= 2
+            BitmapFactory.decodeFile(displayPath, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
         }
     }
     val loadedBitmap = bitmap
