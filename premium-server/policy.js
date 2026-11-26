@@ -1,8 +1,8 @@
 const {createHash} = require("node:crypto");
 const accountHash = uid => createHash("sha256").update(uid, "utf8").digest("hex");
 const product = "tarkastus_cloud_premium";
-function assess(purchase, uid, now = Date.now()) {
-  if (purchase.externalAccountIdentifiers?.obfuscatedExternalAccountId !== accountHash(uid)) throw new Error("account mismatch");
+function assess(purchase, uid, now = Date.now(), expectedHash = accountHash(uid)) {
+  if (purchase.externalAccountIdentifiers?.obfuscatedExternalAccountId !== expectedHash) throw new Error("account mismatch");
   const items = (purchase.lineItems || []).filter(i => i.productId === product && i.offerDetails?.basePlanId === "monthly" && i.autoRenewingPlan);
   if (!items.length) throw new Error("plan mismatch");
   const expiry = Math.max(...items.map(i => Date.parse(i.expiryTime || "") || 0));
