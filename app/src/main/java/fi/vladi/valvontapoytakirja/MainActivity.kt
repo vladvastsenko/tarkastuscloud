@@ -91,6 +91,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!BuildConfig.OFFLINE_PREVIEW && BuildConfig.PREMIUM_CHECKOUT_ENABLED) {
+            com.google.firebase.appcheck.FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory.getInstance()
+            )
+        }
         val recovery = runCatching {
             fi.vladi.valvontapoytakirja.cloud.recoverInterruptedRestore(java.io.File(applicationInfo.dataDir, "files"))
         }
