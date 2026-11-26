@@ -71,6 +71,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-functions")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation("com.android.billingclient:billing:8.1.0")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.gms:play-services-ads:24.7.0")
