@@ -95,7 +95,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             fi.vladi.valvontapoytakirja.cloud.recoverInterruptedRestore(java.io.File(applicationInfo.dataDir, "files"))
         }
         if (recovery.isFailure) {
-            setContent { MaterialTheme { Text("Data recovery required. Original backup retained.") } }
+            setContent { MaterialTheme { RecoveryScreen(File(applicationInfo.dataDir, "files")) { recreate() } } }
             return
         }
         setContent {

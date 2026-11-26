@@ -30,4 +30,14 @@ class RestoreRecoveryTest {
         assertThrows(IllegalStateException::class.java) { recoverInterruptedRestore(current) }
         assertTrue(staging.exists())
     }
+    @Test fun choiceKeepsBothCopies() {
+        for (original in listOf(true,false)) scenario { current, previous, staging ->
+            seed(current,"new"); seed(previous,"old")
+            val retained = resolveRestoreConflict(current,original)
+            assertEquals(if(original) "old" else "new",File(current,"report").readText())
+            assertEquals(if(original) "new" else "old",File(retained,"report").readText())
+            recoverInterruptedRestore(current)
+            assertTrue(retained.exists())
+        }
+    }
 }

@@ -18,3 +18,20 @@ internal fun recoverInterruptedRestore(current: File) {
         check(staging.deleteRecursively()) { "Cannot remove incomplete staging" }
     }
 }
+
+/** Retain the unselected copy beside filesDir, never inside the active data tree. */
+internal fun resolveRestoreConflict(current: File, useOriginal: Boolean): File {
+    val previous = File(current.parentFile, "tarkastus_restore_previous")
+    require(current.isDirectory && previous.isDirectory)
+    val retained = File(current.parentFile,"tarkastus_retained_" + java.util.UUID.randomUUID())
+    if (!useOriginal) {
+        check(previous.renameTo(retained))
+    } else {
+        check(current.renameTo(retained))
+        if (!previous.renameTo(current)) {
+            check(retained.renameTo(current))
+            error("Original copy could not be opened")
+        }
+    }
+    return retained
+}
