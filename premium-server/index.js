@@ -110,7 +110,9 @@ exports.signInExistingGoogle = onCall({region:"europe-west1",maxInstances:5,enfo
     const identity = ticket.getPayload();
     if (!identity?.sub || identity.email_verified !== true) throw new Error("Unverified identity");
     const admin = getAuth();
-    const user = await admin.getUserByProviderUid("google.com",identity.sub);
+    const lookup = await admin.getUsers([{providerId:"google.com",providerUid:identity.sub}]);
+    const user = lookup.users.find(u => u.providerData.some(p => p.providerId === "google.com" && p.uid === identity.sub));
+    if (!user) return {registrationRequired:true};
     if (user.disabled) throw new Error("Disabled account");
     return {customToken:await admin.createCustomToken(user.uid)};
   } catch (_) {
