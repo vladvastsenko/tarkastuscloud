@@ -200,9 +200,8 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
     var showManagement by remember { mutableStateOf(false) }
     var showCloudBackup by remember { mutableStateOf(false) }
     var showUserGuide by remember { mutableStateOf(false) }
-    var showCustomReport by remember { mutableStateOf(false) }
 
-    androidx.activity.compose.BackHandler(enabled = !showCustomReport && (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
+    androidx.activity.compose.BackHandler(enabled = (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
         when {
             showLocalBackup -> showLocalBackup = false
             showPremium -> closePremium()
@@ -216,8 +215,6 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
         LocalBackupScreen(onBack = { showLocalBackup = false })
     } else if (showPremium) {
         PremiumManagementScreen(premium, onBack = closePremium, onSignIn = onSignOut, registrationCheckout = registrationCheckout)
-    } else if (showCustomReport) {
-        CustomReportScreen(onBack = { showCustomReport = false })
     } else if (showUserGuide) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
@@ -253,7 +250,6 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
             onTarkastus = {
                 context.startActivity(Intent(context, TarkastusMainActivity::class.java))
             },
-            onCustomReport = { showCustomReport = true },
             onManagement = { showManagement = true },
             showAds = (consent?.canRequestAds == true && !premium.active)
         )
@@ -263,7 +259,6 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
 @Composable
 private fun UnifiedStartScreen(
     onTarkastus: () -> Unit,
-    onCustomReport: () -> Unit,
     onManagement: () -> Unit,
     showAds: Boolean
 ) {
@@ -289,9 +284,6 @@ private fun UnifiedStartScreen(
         Text(stringResource(R.string.choose_report))
         Button(onClick = onTarkastus, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.report_tarkastus))
-        }
-        Button(onClick = onCustomReport, modifier = Modifier.fillMaxWidth()) {
-            Text(customLabels(AppLanguage.selected(LocalContext.current))[0])
         }
         Spacer(modifier = Modifier.weight(1f))
         if (showAds) CloudAdMobBanner()
