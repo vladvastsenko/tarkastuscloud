@@ -89,6 +89,36 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     }
     var busy by remember { mutableStateOf(false) }
     var imports by remember { mutableStateOf(0) }
+    var deletion by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    val extra = when (language.substringBefore("-")) {
+        "fi" -> listOf("Käytä yhteisiä asetuksia", "Poistetaanko?")
+        "ru" -> listOf("Использовать общие настройки", "Удалить выбранный элемент?")
+        "sv" -> listOf("Använd gemensamma inställningar", "Ta bort objektet?")
+        "nb" -> listOf("Bruk felles innstillinger", "Slette elementet?")
+        "da" -> listOf("Brug fælles indstillinger", "Slet elementet?")
+        "et" -> listOf("Kasuta ühiseid seadeid", "Kas kustutada?")
+        "lv" -> listOf("Izmantot kopīgos iestatījumus", "Vai dzēst?")
+        "lt" -> listOf("Naudoti bendrus nustatymus", "Ar ištrinti?")
+        "fr" -> listOf("Utiliser les paramètres communs", "Supprimer cet élément ?")
+        "es" -> listOf("Usar ajustes comunes", "¿Eliminar este elemento?")
+        "it" -> listOf("Usa impostazioni comuni", "Eliminare questo elemento?")
+        "de" -> listOf("Gemeinsame Einstellungen verwenden", "Element löschen?")
+        "pl" -> listOf("Użyj wspólnych ustawień", "Usunąć element?")
+        else -> listOf("Use shared settings", "Delete this item?")
+    }
+    deletion?.let { (isTemplate, id) ->
+        AlertDialog(onDismissRequest = { deletion = null }, title = { Text(extra[1]) },
+            confirmButton = { TextButton(onClick = {
+                deletion = null
+                enqueue({
+                    if (isTemplate) store.deleteTemplate(id) else store.deleteDocument(id)
+                }) {
+                    library = if (isTemplate) library.copy(templates = library.templates.filterNot { it.id == id })
+                        else library.copy(documents = library.documents.filterNot { it.id == id })
+                }
+            }) { Text(l[17]) } },
+            dismissButton = { TextButton(onClick = { deletion = null }) { Text(l[16]) } })
+    }
     fun back() {
         if (busy || pendingWrites > 0 || imports > 0) return
         val d = document
@@ -115,6 +145,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (d != null) {
             CustomPdfLanguage(d.pdfLanguage.ifBlank { AppLanguage.selected(context) }) { language -> document?.let { updateDocument(it.copy(pdfLanguage = language)) } }
             Text(d.template.title, style = MaterialTheme.typography.titleLarge)
+            Row { Switch(d.useSharedSettings, { enabled -> document?.let { updateDocument(it.copy(useSharedSettings = enabled)) } }); Text(extra[0]) }
             for (section in d.template.sections) {
                 Text(section.title, style = MaterialTheme.typography.titleMedium)
                 for (field in section.fields) key(field.id) {
@@ -137,7 +168,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                     busy = true
                     scope.launch {
                         try { withContext(Dispatchers.IO) { exportCustomPdf(context, store, d) }; message = l[23] }
-                        catch (e: Exception) { message = l[24] }
+                        catch (e: Exception) { android.util.Log.e("CustomReport", "PDF export failed", e); message = l[24] }
                         finally { busy = false }
                     }
                 }
@@ -174,9 +205,9 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
             Button(onClick = { updateTemplate(CustomTemplate()) }) { Text(l[1]) }
             CustomTemplateTransfer(library.templates, { imported -> persist(library.copy(templates = library.templates + imported.map { it.copy(id = customId()) })) }, { message = l[24] }, { message = l[23] })
             Text(l[2], style = MaterialTheme.typography.titleMedium)
-            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { updateTemplate(item) }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) } } }
+            for (item in library.templates) { Text(item.title); Row { TextButton(onClick = { updateTemplate(item) }) { Text(l[12]) }; TextButton(onClick = { updateDocument(CustomDocument(template = item, pdfLanguage = AppLanguage.selected(context))) }) { Text(l[13]) }; TextButton(onClick = { updateTemplate(item.copy(id = customId())) }) { Text(l[18]) }; TextButton(enabled = pendingWrites == 0 && !busy && loaded.isSuccess, onClick = { deletion = true to item.id }) { Text(l[17]) } } }
             Text(l[3], style = MaterialTheme.typography.titleMedium)
-            for (item in library.documents) OutlinedButton(onClick = { updateDocument(item) }) { Text(item.template.title) }
+            for (item in library.documents) Row { OutlinedButton(onClick = { updateDocument(item) }) { Text(item.template.title) }; TextButton(enabled = pendingWrites == 0 && !busy && loaded.isSuccess, onClick = { deletion = false to item.id }) { Text(l[17]) } }
         }
     }
 }
