@@ -62,6 +62,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
     var passwordVisible by remember { mutableStateOf(false) }
     var register by remember { mutableStateOf(false) }
     var showPremiumTerms by remember { mutableStateOf(false) }
+    var simulatedCheckout by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val declineCheckout: () -> Unit = {
         auth.signOut()
@@ -164,9 +165,24 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
         }
     }
     if (showPremiumTerms && !signedIn && !guest) {
-        PremiumRegistrationScreen(onContinue = { showPremiumTerms = false; register = true },
+        PremiumRegistrationScreen(onContinue = { showPremiumTerms = false; if (developerGoogle) simulatedCheckout = true else register = true },
             onBack = { showPremiumTerms = false },
             onFree = { showPremiumTerms = false; guestPrefs.edit().putBoolean("enabled", true).apply(); guest = true })
+        return
+    }
+    if (simulatedCheckout && developerGoogle && !signedIn && !guest) {
+        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("TEST — Premium", style = MaterialTheme.typography.headlineSmall)
+            Text("Simulated payment. No charge, Firebase account or cloud access.")
+            Button(onClick = {
+                simulatedCheckout = false
+                message = "TEST — Payment successful. No account created."
+            }, modifier = Modifier.fillMaxWidth()) { Text("TEST — Confirm payment") }
+            OutlinedButton(onClick = {
+                simulatedCheckout = false
+                message = "TEST — Payment cancelled"
+            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.back)) }
+        }
         return
     }
     if (guest && !signedIn) {
