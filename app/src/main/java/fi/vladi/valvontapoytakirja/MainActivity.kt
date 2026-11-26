@@ -359,10 +359,6 @@ private fun ManagementScreen(
         Button(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.shared_settings))
         }
-        OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true },
-            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
-            Text(if (guestMode) stringResource(R.string.guest_sign_in) else stringResource(R.string.sign_out))
-        }
         OutlinedButton(onClick = onUserGuide, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.user_guide_title))
         }
@@ -373,6 +369,10 @@ private fun ManagementScreen(
         if (guestMode) Text(stringResource(R.string.guest_local_notice))
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text("← " + stringResource(R.string.back))
+        }
+        OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true },
+            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
+            Text(if (guestMode) stringResource(R.string.guest_sign_in) else stringResource(R.string.sign_out))
         }
         if (consent?.privacyOptionsRequired == true) {
             OutlinedButton(onClick = { consent.showPrivacyOptions() }, modifier = Modifier.fillMaxWidth()) {
