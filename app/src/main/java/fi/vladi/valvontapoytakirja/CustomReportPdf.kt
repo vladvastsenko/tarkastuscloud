@@ -16,7 +16,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
     var y = 44f
     fun finish() { paint.typeface = Typeface.DEFAULT; paint.textSize = 9f
         val footer = settings.footerText.replace("\n"," ")
-        if (footer.isNotBlank()) page.canvas.drawText(footer.take(paint.breakText(footer,true,490f,null)),42f,815f,paint)
+        if (report.useSharedSettings && footer.isNotBlank()) page.canvas.drawText(footer.take(paint.breakText(footer,true,490f,null)),42f,815f,paint)
         paint.textSize = 10f; page.canvas.drawText(pageNumber.toString(), 550f, 815f, paint); pdf.finishPage(page) }
     fun newPage() { finish(); page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create()); y = 44f }
     fun space(height: Float) { if (y + height > 790.01f) newPage() }
@@ -114,7 +114,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         if (f.separatePhotoPages) afterDedicatedPhotos = true
     }
     try {
-        if (settings.logoPath.isNotBlank()) {
+        if (report.useSharedSettings && settings.logoPath.isNotBlank()) {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(settings.logoPath,bounds)
             var sample = 1
@@ -125,7 +125,7 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
                 } finally { bitmap.recycle() }
             }
         }
-        if (settings.headerText.isNotBlank()) line(settings.headerText)
+        if (report.useSharedSettings && settings.headerText.isNotBlank()) line(settings.headerText)
         line(report.template.title,true)
         for (s in report.template.sections) {
             val fields = s.fields.filter { f ->
