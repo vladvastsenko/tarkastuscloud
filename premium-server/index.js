@@ -23,3 +23,22 @@ exports.verifyPremium = onCall({region:"europe-west1",maxInstances:5}, async req
     throw new HttpsError("failed-precondition","Subscription could not be verified");
   }
 });
+
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore} = require("firebase-admin/firestore");
+const {issuePermit} = require("./registration");
+initializeApp();
+exports.preparePremiumRegistration = onCall({region:"europe-west1",maxInstances:5,enforceAppCheck:true}, async request => {
+  const {purchaseToken,session} = request.data || {};
+  if (typeof purchaseToken !== "string" || purchaseToken.length < 8 || purchaseToken.length > 4096 ||
+      typeof session !== "string" || !/^[a-f0-9]{64}$/.test(session))
+    throw new HttpsError("invalid-argument","Invalid registration request");
+  try {
+    const client = await auth.getClient();
+    const {data} = await client.request({url:base+"/subscriptionsv2/tokens/"+encodeURIComponent(purchaseToken),timeout:15000});
+    const permit = await issuePermit(getFirestore(),purchaseToken,session,data);
+    return {permit};
+  } catch (_) {
+    throw new HttpsError("failed-precondition","Registration permit unavailable");
+  }
+});
