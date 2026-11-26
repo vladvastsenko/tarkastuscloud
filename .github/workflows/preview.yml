@@ -47,7 +47,7 @@ jobs:
           else
             echo "::warning::No permanent Cloud signing key configured; debug APK may not update previous builds."
           fi
-          gradle :app:assembleDebug -PofflinePreview=true --no-daemon
+          gradle :app:testDebugUnitTest :app:assembleDebug -PofflinePreview=true --no-daemon
       - name: Verify APK signature and record certificate
         run: |
           set -euo pipefail

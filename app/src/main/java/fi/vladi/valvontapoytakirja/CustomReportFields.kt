@@ -107,7 +107,7 @@ internal fun CustomSignature(images: List<String>, store: CustomStore, onImages:
     if (images.isNotEmpty()) TextButton(onClick = { strokes = emptyList(); onImages(emptyList()) }) { Text(l[17]) }
 }
 @Composable
-internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (List<String>)->Unit, onError: ()->Unit, l: List<String>) {
+internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (List<String>)->Unit, onError: ()->Unit, l: List<String>, onImport: (Boolean)->Unit) {
     val context = LocalContext.current
     var pending by rememberSaveable { mutableStateOf<String?>(null) }
     val latestImages by rememberUpdatedState(images)
@@ -117,6 +117,7 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         if (uris.isNotEmpty() && !importing) {
             importing = true
+            onImport(true)
             scope.launch {
                 try {
                     val imported = withContext(Dispatchers.IO) { uris.mapNotNull { uri -> runCatching { store.importImage(context, uri) }.getOrNull() } }
@@ -124,18 +125,27 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
                     if (imported.size != uris.size) onError()
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) { onError() }
-                finally { importing = false }
+                finally { importing = false; onImport(false) }
             }
         }
     }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val file = pending?.let { File(it) }
-        try {
-            if (ok && file != null && file.length() > 0) {
-                val uri = FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
-                onImages(latestImages + store.importImage(context,uri))
-            }
-        } catch (e: Exception) { onError() } finally { file?.delete(); pending = null }
+        importing = true
+        onImport(true)
+        scope.launch {
+            try {
+                if (ok && file != null && file.length() > 0) {
+                    val name = withContext(Dispatchers.IO) {
+                        val uri = FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
+                        store.importImage(context,uri)
+                    }
+                    latestOnImages(latestImages + name)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) { onError() }
+            finally { file?.delete(); pending = null; importing = false; onImport(false) }
+        }
     }
     Row {
         OutlinedButton(enabled = !importing, onClick = { gallery.launch("image/*") }) { Text(l[21]) }
@@ -150,6 +160,6 @@ internal fun CustomPhotos(images: List<String>, store: CustomStore, onImages: (L
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     images.forEachIndexed { i,name -> key(name) {
         CustomPreview(name,store)
-        TextButton(onClick = { onImages(images.filterIndexed { index,_ -> index != i }) }) { Text(l[17]+" "+(i+1)) }
+        TextButton(enabled = !importing, onClick = { onImages(images.filterIndexed { index,_ -> index != i }) }) { Text(l[17]+" "+(i+1)) }
     } }
 }

@@ -43,25 +43,23 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val writer = remember { kotlinx.coroutines.sync.Mutex() }
     var pendingWrites by remember { mutableStateOf(0) }
-    val queued = remember { linkedMapOf<String, suspend () -> Unit>() }
+    val queued = remember { CustomWriteQueue<suspend () -> Unit>() }
     val failedKeys = remember { mutableStateMapOf<String, Boolean>() }
     var worker by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     fun enqueue(action: () -> Unit, key: String = customId(), done: () -> Unit = {}) {
-        queued.remove(key)
-        queued[key] = { withContext(Dispatchers.IO) { action() }; failedKeys.remove(key); done() }
+        queued.put(key) { withContext(Dispatchers.IO) { action() }; failedKeys.remove(key); done() }
         pendingWrites = queued.size + 1
         if (worker?.isActive == true) return
         worker = customSaveScope.launch {
             while (queued.isNotEmpty()) {
                 kotlinx.coroutines.delay(120)
-                val entry = queued.entries.first()
-                val task = entry.value
-                queued.remove(entry.key)
+                val entry = queued.take() ?: break
+                val task = entry.second
                 try {
                     writer.lock()
                     try { task() } finally { writer.unlock() }
                 } catch (e: Exception) {
-                    failedKeys[entry.key] = true
+                    failedKeys[entry.first] = true
                     message = l[24]
                 }
                 pendingWrites = queued.size + 1
@@ -92,8 +90,9 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         enqueue({ store.saveTemplate(next); store.rememberEditor("t:" + next.id) }, key = "template:" + next.id)
     }
     var busy by remember { mutableStateOf(false) }
+    var imports by remember { mutableStateOf(0) }
     fun back() {
-        if (busy || pendingWrites > 0) return
+        if (busy || pendingWrites > 0 || imports > 0) return
         val d = document
         val t = template
         if (d != null) {
@@ -110,7 +109,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     BackHandler { back() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(l[0], style = MaterialTheme.typography.headlineSmall)
-        OutlinedButton(onClick = { back() }) { Text(l[16]) }
+        OutlinedButton(enabled = !busy && imports == 0 && pendingWrites == 0, onClick = { back() }) { Text(l[16]) }
         if (message.isNotBlank()) Text(message)
         if (pendingWrites > 0) LinearProgressIndicator(Modifier.fillMaxWidth())
         val d = document
@@ -125,14 +124,14 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                     CustomValueEditor(field, value, d.attachments[field.id].orEmpty(), l, store,
                         onValue = { v -> document?.let { updateDocument(it.copy(values = it.values + (field.id to v))) } },
                         onImages = { v -> document?.let { updateDocument(it.copy(attachments = it.attachments + (field.id to v))) } },
-                        onError = { message = l[24] })
+                        onError = { message = l[24] }, onImport = { started -> imports += if (started) 1 else -1 })
                 }
             }
             fun valid(): Boolean = d.template.sections.flatMap { it.fields }.all { f ->
                 !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
             Button(onClick = { enqueue({ store.saveDocument(d) }, key = "document:" + d.id) { message = l[23] } }) { Text(l[14]) }
-            Button(enabled = !busy && pendingWrites == 0 && failedKeys.isEmpty(), onClick = {
+            Button(enabled = !busy && imports == 0 && pendingWrites == 0 && failedKeys.isEmpty(), onClick = {
                 if (!valid()) message = l[22] else {
                     busy = true
                     scope.launch {
@@ -181,7 +180,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
     }
 }
 @Composable
-private fun CustomValueEditor(f: CustomField, value: String, images: List<String>, l: List<String>, store: CustomStore, onValue: (String)->Unit, onImages: (List<String>)->Unit, onError: ()->Unit) {
+private fun CustomValueEditor(f: CustomField, value: String, images: List<String>, l: List<String>, store: CustomStore, onValue: (String)->Unit, onImages: (List<String>)->Unit, onError: ()->Unit, onImport: (Boolean)->Unit) {
     Text(f.label + if (f.required) " *" else "")
     when (f.kind) {
         CustomKind.HEADING -> Unit
@@ -193,7 +192,7 @@ private fun CustomValueEditor(f: CustomField, value: String, images: List<String
         CustomKind.DATE_TIME -> CustomDateTime(value, onValue)
         CustomKind.TABLE -> CustomTable(f, value, onValue, l)
         CustomKind.SIGNATURE -> CustomSignature(images, store, onImages, onError, l)
-        CustomKind.PHOTOS -> CustomPhotos(images, store, onImages, onError, l)
+        CustomKind.PHOTOS -> CustomPhotos(images, store, onImages, onError, l, onImport)
         else -> OutlinedTextField(value,onValue, modifier = Modifier.fillMaxWidth(), singleLine = f.kind !in listOf(CustomKind.LONG_TEXT,CustomKind.TABLE), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (f.kind == CustomKind.NUMBER) androidx.compose.ui.text.input.KeyboardType.Decimal else androidx.compose.ui.text.input.KeyboardType.Text))
     }
 }
