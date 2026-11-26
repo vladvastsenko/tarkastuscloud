@@ -36,4 +36,31 @@ class CustomRecoveryTest {
         File(root,"records/ready").delete()
         assertEquals(doc,CustomStore(root).load().documents.single())
     }
+
+    @Test fun sharedSelectionSurvivesReopening() {
+        val root = folder.newFolder()
+        val doc = CustomDocument(useSharedSettings = false, customerId = "c", customerText = "Customer", siteId = "s", siteText = "Site", inspectorId = "i", inspectorText = "Inspector")
+        CustomStore(root).saveDocument(doc)
+        assertEquals(doc, CustomStore(root).load().documents.single())
+    }
+    @Test fun deletingTemplatePreservesReportAndDeletingReportPreservesOtherTemplate() {
+        val root = folder.newFolder()
+        val store = CustomStore(root)
+        val template = CustomTemplate(title = "Original")
+        val other = CustomTemplate(title = "Other")
+        val doc = CustomDocument(template = template)
+        store.save(CustomLibrary(listOf(template, other), listOf(doc)))
+        store.load()
+        store.rememberEditor("t:" + template.id)
+        store.deleteTemplate(template.id)
+        val reopened = CustomStore(root)
+        assertEquals(listOf(other), reopened.load().templates)
+        assertEquals(listOf(doc), reopened.load().documents)
+        assertNull(reopened.activeEditor())
+        reopened.rememberEditor("d:" + doc.id)
+        reopened.deleteDocument(doc.id)
+        assertTrue(CustomStore(root).load().documents.isEmpty())
+        assertEquals(listOf(other), CustomStore(root).load().templates)
+        assertNull(reopened.activeEditor())
+    }
 }
