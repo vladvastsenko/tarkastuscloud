@@ -47,12 +47,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 
 @Composable
-internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit) {
+internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registrationCheckout: Boolean, onCheckoutFinished: () -> Unit, onCheckoutDeclined: () -> Unit) -> Unit) {
     val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     var signedIn by remember { mutableStateOf(auth.currentUser != null) }
     val guestPrefs = remember { context.getSharedPreferences("tarkastus_guest_mode", android.content.Context.MODE_PRIVATE) }
     var guest by remember { mutableStateOf(auth.currentUser == null && guestPrefs.getBoolean("enabled", false)) }
+    var registrationCheckout by remember { mutableStateOf(guestPrefs.getBoolean("registration_checkout", false) && auth.currentUser != null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var email by remember { mutableStateOf("") }
@@ -61,6 +62,19 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
     var register by remember { mutableStateOf(false) }
     var showPremiumTerms by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    val declineCheckout: () -> Unit = {
+        auth.signOut()
+        registrationCheckout = false
+        guestPrefs.edit().remove("registration_checkout").putBoolean("enabled", true).apply()
+        signedIn = false
+        guest = true
+        register = false
+        password = ""
+    }
+    val finishCheckout: () -> Unit = {
+        registrationCheckout = false
+        guestPrefs.edit().remove("registration_checkout").apply()
+    }
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
     val options = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -99,9 +113,10 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
         return
     }
     if (guest && !signedIn) {
-        content({ guest = false; guestPrefs.edit().putBoolean("enabled", false).apply() })
+        content({ guest = false; guestPrefs.edit().putBoolean("enabled", false).apply() }, false, {}, {})
     } else if (signedIn) {
         BiometricSessionGate(onSignOut = {
+            finishCheckout()
             auth.signOut()
             GoogleSignIn.getClient(context, options).signOut()
             signedIn = false
@@ -115,7 +130,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             password = ""
             error = null
             message = null
-        }) }
+        }, registrationCheckout, finishCheckout, declineCheckout) }
     } else {
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 10.dp),
@@ -179,7 +194,12 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
                             guest = false
                             guestPrefs.edit().putBoolean("enabled", false).apply()
                             signedIn = true
-                            if (register) auth.currentUser?.sendEmailVerification()
+                            if (register) {
+                                registrationCheckout = true
+                                guestPrefs.edit().putBoolean("registration_checkout", true).apply()
+                                auth.currentUser?.sendEmailVerification()
+                            }
+                            register = false
                         } else error = localizedAuthError(context, result.exception, R.string.auth_failed)
                     }
                 }
