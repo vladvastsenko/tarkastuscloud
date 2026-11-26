@@ -63,4 +63,27 @@ class CustomRecoveryTest {
         assertEquals(listOf(other), CustomStore(root).load().templates)
         assertNull(reopened.activeEditor())
     }
+
+    @Test fun deletedRecordsCannotReturnAndSharedAttachmentsSurviveCleanup() {
+        val root = folder.newFolder()
+        val store = CustomStore(root)
+        val shared = customId() + ".png"
+        val unused = customId() + ".image"
+        for (name in listOf(shared, unused)) {
+            val file = store.image(name)
+            file.writeBytes(byteArrayOf(1,2,3))
+            assertTrue(file.setLastModified(System.currentTimeMillis() - 9L * 86400000L))
+        }
+        val first = CustomDocument(attachments = mapOf("field" to listOf(shared, unused)))
+        val second = CustomDocument(attachments = mapOf("field" to listOf(shared)))
+        store.save(CustomLibrary(documents = listOf(first, second)))
+        store.deleteDocument(first.id)
+        store.saveDocument(first)
+        File(root,"records/ready").delete()
+        val reopened = CustomStore(root)
+        assertEquals(listOf(second), reopened.load().documents)
+        reopened.cleanUnused(reopened.load())
+        assertTrue(reopened.image(shared).exists())
+        assertFalse(reopened.image(unused).exists())
+    }
 }
