@@ -67,7 +67,7 @@ jobs:
             export CLOUD_KEYSTORE_PATH="$RUNNER_TEMP/cloud-signing.p12"
             umask 077
             printf '%s' "$CLOUD_KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode > "$CLOUD_KEYSTORE_PATH"
-            trap 'rm -f "$CLOUD_KEYSTORE_PATH"' EXIT
+            printf 'CLOUD_KEYSTORE_PATH=%s\n' "$CLOUD_KEYSTORE_PATH" >> "$GITHUB_ENV"
           else
             echo "::error::Missing permanent Cloud signing key"; exit 1
           fi
@@ -82,6 +82,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Test real Android PDF export
+        env:
+          CLOUD_KEYSTORE_PASSWORD: ${{ secrets.CLOUD_KEYSTORE_PASSWORD }}
+          CLOUD_KEY_ALIAS: ${{ secrets.CLOUD_KEY_ALIAS }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -107,6 +110,9 @@ jobs:
             grep -Ei "^[[:space:]]*(Signer #1|V[0-9]+ Signer:) ?certificate SHA-1 digest: ecd6ce941543e92ea89938ef13f2185a9395eaaf[[:space:]]*$" "$apk.cert.txt" || { echo "::error::Unexpected Cloud SHA-1"; exit 1; }
             sha256sum "$apk" > "$apk.sha256"
           done
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cloud-signing.p12"
       - name: Publish unit test reports
         if: always()
         uses: actions/upload-artifact@v4
