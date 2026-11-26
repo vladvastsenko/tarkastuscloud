@@ -55,6 +55,7 @@ object CloudBackupManager {
 
         val tempZip = File(context.cacheDir, "tarkastuscloud_backup_${System.currentTimeMillis()}.zip")
         try {
+            fi.vladi.valvontapoytakirja.CustomStore.withStorageLock {
             ZipOutputStream(BufferedOutputStream(FileOutputStream(tempZip))).use { zip ->
                 zip.putNextEntry(ZipEntry(MANIFEST))
                 zip.write((MANIFEST_CONTENT + "\n").toByteArray(Charsets.UTF_8))
@@ -64,7 +65,7 @@ object CloudBackupManager {
                 var entries = 1
                 var bytes = 0L
                 root.walkTopDown()
-                    .filter { it.isFile }
+                    .filter { it.isFile && !it.name.endsWith(".pending") && !it.name.endsWith(".new") }
                     .forEach { file ->
                         val relative = file.relativeTo(root).invariantSeparatorsPath
                         require(relative.isNotBlank() && !relative.startsWith("../")) {
@@ -87,6 +88,7 @@ object CloudBackupManager {
                     }
             }
 
+            }
             val displayName = "TarkastusCloud_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
             check(folder.findFile(displayName) == null) { "Backup already exists" }
             val target = folder.createFile("application/zip", displayName)
@@ -180,73 +182,10 @@ object CloudBackupManager {
             deleteRecursively()
             check(mkdirs()) { "Palautuksen väliaikaista kansiota ei voitu luoda." }
         }
-        var manifestFound = false
-        val seenEntries = hashSetOf<String>()
-        var entryCount = 0
-        var totalBytes = 0L
-
         try {
             val input = context.contentResolver.openInputStream(archiveUri)
-                ?: error("Varmuuskopioita ei voitu avata.")
-            ZipInputStream(BufferedInputStream(input)).use { zip ->
-                while (true) {
-                    val entry = zip.nextEntry ?: break
-                    entryCount++
-                    require(entryCount <= MAX_ENTRIES) { "Varmuuskopiossa on liian monta tiedostoa." }
-
-                    val name = entry.name.replace('\\', '/')
-                    require(seenEntries.add(name)) { "Varmuuskopiossa on päällekkäinen tiedostopolku." }
-                    require(!name.startsWith("/") && name.split('/').none { it == ".." || it.isBlank() }) {
-                        "Varmuuskopiossa on virheellinen tiedostopolku."
-                    }
-
-                    if (name == MANIFEST) {
-                        val manifestBytes = ByteArray(128)
-                        var count = 0
-                        while (count < manifestBytes.size) {
-                            val n = zip.read(manifestBytes, count, manifestBytes.size - count)
-                            if (n < 0) break
-                            count += n
-                        }
-                        require(count in 1..127 && zip.read() == -1) { "Varmuuskopion tunnistetiedot ovat virheelliset." }
-                        val text = String(manifestBytes, 0, count, Charsets.UTF_8).trim()
-                        require(text == MANIFEST_CONTENT) { "Tiedosto ei ole Tarkastus-varmuuskopio." }
-                        manifestFound = true
-                    } else if (name.startsWith("files/") && name.length > 6) {
-                        val relative = name.removePrefix("files/")
-                        val destination = File(staging, relative)
-                        val canonicalRoot = staging.canonicalFile
-                        val canonicalDestination = destination.canonicalFile
-                        require(canonicalDestination.path.startsWith(canonicalRoot.path + File.separator)) {
-                            "Varmuuskopiossa on kielletty tiedostopolku."
-                        }
-                        if (entry.isDirectory) {
-                            require(zip.read() == -1) { "Directory entry contains data" }
-                            destination.mkdirs()
-                        } else {
-                            destination.parentFile?.mkdirs()
-                            FileOutputStream(destination).buffered().use { output ->
-                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                while (true) {
-                                    val count = zip.read(buffer)
-                                    if (count < 0) break
-                                    totalBytes += count
-                                    require(totalBytes <= MAX_UNPACKED_BYTES) {
-                                        "Varmuuskopio on liian suuri palautettavaksi."
-                                    }
-                                    output.write(buffer, 0, count)
-                                }
-                            }
-                        }
-                    } else {
-                        require(name == MANIFEST) { "Varmuuskopio sisältää tuntemattoman tiedoston." }
-                    }
-                    zip.closeEntry()
-                }
-            }
-            check(manifestFound) { "Varmuuskopion tunnistetietoja ei löytynyt." }
-            check(seenEntries.size > 1) { "Varmuuskopio ei sisällä palautettavia tiedostoja." }
-
+                ?: error("Cannot open backup")
+            extractBackup(input, staging, MAX_ENTRIES, MAX_UNPACKED_BYTES)
             // Keep the current local data until the complete archive has been extracted and validated.
             val current = context.filesDir
             val previous = File(current.parentFile, "tarkastus_restore_previous")

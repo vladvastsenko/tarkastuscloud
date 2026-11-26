@@ -119,9 +119,12 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                 Text(section.title, style = MaterialTheme.typography.titleMedium)
                 for (field in section.fields) key(field.id) {
                     val value = d.values[field.id] ?: field.defaultValue
+                    val updateLatest by rememberUpdatedState<(CustomDocument) -> Unit>({ updateDocument(it) })
+                    val onValue = remember(field.id) { { v: String -> document?.let { updateLatest(it.copy(values = it.values + (field.id to v))) }; Unit } }
+                    val onImages = remember(field.id) { { v: List<String> -> document?.let { updateLatest(it.copy(attachments = it.attachments + (field.id to v))) }; Unit } }
                     CustomValueEditor(field, value, d.attachments[field.id].orEmpty(), l, store,
-                        onValue = { v -> document?.let { updateDocument(it.copy(values = it.values + (field.id to v))) } },
-                        onImages = { v -> document?.let { updateDocument(it.copy(attachments = it.attachments + (field.id to v))) } },
+                        onValue = onValue,
+                        onImages = onImages,
                         onError = { message = l[24] }, onImport = { started -> imports += if (started) 1 else -1 })
                 }
             }

@@ -24,7 +24,10 @@ internal data class CustomLibrary(val templates: List<CustomTemplate> = emptyLis
 internal class CustomStore(private val root: File) {
     constructor(context: Context) : this(File(context.filesDir, "custom_reports"))
     init { root.mkdirs() }
-    companion object { private val lock = Any() }
+    companion object {
+        private val lock = Any()
+        internal fun <T> withStorageLock(action: () -> T): T = synchronized(lock) { action() }
+    }
     private val file = AtomicFile(File(root, "library.json"))
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val records = File(root,"records").apply { mkdirs() }
