@@ -33,8 +33,11 @@ internal class CustomStore(context: Context) {
     }
     fun importImage(context: Context, uri: android.net.Uri): String {
         val target = File(root, customId() + ".image")
-        try { context.contentResolver.openInputStream(uri)?.use { input -> target.outputStream().use { input.copyTo(it) } } ?: error("Cannot read image") }
+        try { context.contentResolver.openInputStream(uri)?.use { input -> target.outputStream().use { val buffer = ByteArray(8192); var total = 0L; while (true) { val n = input.read(buffer); if (n < 0) break; total += n; require(total <= 50L * 1024 * 1024); it.write(buffer,0,n) } } } ?: error("Cannot read image") }
         catch (e: Exception) { target.delete(); throw e }
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(target.path,bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) { target.delete(); error("Invalid image") }
         return target.name
     }
     fun saveBitmap(bitmap: android.graphics.Bitmap): String {

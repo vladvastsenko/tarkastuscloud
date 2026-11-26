@@ -128,7 +128,15 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
         if (settings.headerText.isNotBlank()) line(settings.headerText)
         line(report.template.title,true)
         for (s in report.template.sections) {
-            val fields = s.fields.filter { f -> f.kind == CustomKind.HEADING || (report.values[f.id] ?: f.defaultValue).isNotBlank() || !report.attachments[f.id].isNullOrEmpty() }
+            val fields = s.fields.filter { f ->
+                val value = report.values[f.id] ?: f.defaultValue
+                when (f.kind) {
+                    CustomKind.HEADING -> true
+                    CustomKind.PHOTOS, CustomKind.SIGNATURE -> !report.attachments[f.id].isNullOrEmpty()
+                    CustomKind.TABLE -> customRows(value,customColumns(f).size).any { row -> row.any { it.isNotBlank() } }
+                    else -> value.isNotBlank()
+                }
+            }
             if (fields.isEmpty()) continue
             if (s.title.isNotBlank()) line(s.title,true)
             for (f in fields) {

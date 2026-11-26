@@ -1,5 +1,8 @@
 package fi.vladi.valvontapoytakirja
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,7 +32,23 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
         if (loaded.isFailure) { message = l[24]; return }
         runCatching { store.save(next) }.onSuccess { library = next; message = l[23] }.onFailure { message = l[24] }
     }
-    fun back() { if (document != null) document = null else if (template != null) template = null else onBack() }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    fun back() {
+        if (busy) return
+        val d = document
+        val t = template
+        if (d != null) {
+            if (loaded.isFailure) { message = l[24]; return }
+            val next = library.copy(documents = library.documents.filterNot { it.id == d.id } + d)
+            runCatching { store.save(next) }.onSuccess { library = next; document = null }.onFailure { message = l[24] }
+        } else if (t != null) {
+            if (t.title.isBlank()) { template = null; return }
+            if (loaded.isFailure) { message = l[24]; return }
+            val next = library.copy(templates = library.templates.filterNot { it.id == t.id } + t)
+            runCatching { store.save(next) }.onSuccess { library = next; template = null }.onFailure { message = l[24] }
+        } else onBack()
+    }
     BackHandler { back() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(l[0], style = MaterialTheme.typography.headlineSmall)
@@ -54,7 +73,17 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                 !f.required || f.kind == CustomKind.HEADING || if (f.kind in listOf(CustomKind.PHOTOS, CustomKind.SIGNATURE)) !d.attachments[f.id].isNullOrEmpty() else if (f.kind == CustomKind.TABLE) customRows(d.values[f.id] ?: f.defaultValue, customColumns(f).size).any { row -> row.any { it.isNotBlank() } } else (d.values[f.id] ?: f.defaultValue).isNotBlank()
             }
             Button(onClick = { persist(library.copy(documents = library.documents.filterNot { it.id == d.id } + d)) }) { Text(l[14]) }
-            Button(onClick = { if (!valid()) message = l[22] else runCatching { exportCustomPdf(context, store, d) }.onSuccess { message = l[23] }.onFailure { message = l[24] } }) { Text(l[15]) }
+            Button(enabled = !busy, onClick = {
+                if (!valid()) message = l[22] else {
+                    busy = true
+                    scope.launch {
+                        try { withContext(Dispatchers.IO) { exportCustomPdf(context, store, d) }; message = l[23] }
+                        catch (e: Exception) { message = l[24] }
+                        finally { busy = false }
+                    }
+                }
+            }) { Text(l[15]) }
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         } else if (t != null) {
             OutlinedTextField(t.title, { template = t.copy(title = it) }, label = { Text(l[4]) }, modifier = Modifier.fillMaxWidth())
             for ((si, section) in t.sections.withIndex()) key(section.id) {
@@ -94,10 +123,6 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
 }
 @Composable
 private fun CustomValueEditor(f: CustomField, value: String, images: List<String>, l: List<String>, store: CustomStore, onValue: (String)->Unit, onImages: (List<String>)->Unit, onError: ()->Unit) {
-    val context = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) runCatching { store.importImage(context,uri) }.onSuccess { onImages(if (f.kind == CustomKind.SIGNATURE) listOf(it) else images + it) }.onFailure { onError() }
-    }
     Text(f.label + if (f.required) " *" else "")
     when (f.kind) {
         CustomKind.HEADING -> Unit
