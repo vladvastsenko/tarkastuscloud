@@ -104,7 +104,7 @@ internal fun BiometricSettingsControl() {
 }
 
 @Composable
-internal fun BiometricSessionGate(onUnlocked: @Composable () -> Unit) {
+internal fun BiometricSessionGate(onSignOut: () -> Unit, onUnlocked: @Composable () -> Unit) {
     val context = LocalContext.current
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
     var unlocked by remember(uid) { mutableStateOf(!BiometricLock.enabled(context, uid)) }
@@ -158,8 +158,7 @@ internal fun BiometricSessionGate(onUnlocked: @Composable () -> Unit) {
                 }
             }) { Text(androidx.compose.ui.res.stringResource(R.string.bio_unlock)) }
             OutlinedButton(onClick = {
-                FirebaseAuth.getInstance().signOut()
-                (context as? android.app.Activity)?.recreate()
+                onSignOut()
             }) { Text(androidx.compose.ui.res.stringResource(R.string.bio_sign_out)) }
         }
     }

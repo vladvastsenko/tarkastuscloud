@@ -67,7 +67,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
     val options = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
+            .apply { if (webClientId.isNotBlank()) requestIdToken(webClientId) }
             .requestEmail()
             .build()
     }
@@ -99,7 +99,14 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
     if (guest && !signedIn) {
         content({ guest = false; guestPrefs.edit().putBoolean("enabled", false).apply() })
     } else if (signedIn) {
-        BiometricSessionGate { content({
+        BiometricSessionGate(onSignOut = {
+            auth.signOut()
+            GoogleSignIn.getClient(context, options).signOut()
+            signedIn = false
+            password = ""
+            error = null
+            message = null
+        }) { content({
             auth.signOut()
             GoogleSignIn.getClient(context, options).signOut()
             signedIn = false
@@ -138,9 +145,13 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit) -> Unit)
             Text(stringResource(R.string.guest_explanation), style = MaterialTheme.typography.bodySmall)
             Button(
                 onClick = {
-                    busy = true
-                    error = null
-                    launcher.launch(GoogleSignIn.getClient(context, options).signInIntent)
+                    if (webClientId.isBlank()) { error = context.getString(R.string.google_failed) }
+                    else {
+                        busy = true
+                        error = null
+                        try { launcher.launch(GoogleSignIn.getClient(context, options).signInIntent) }
+                        catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
+                    }
                 },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
