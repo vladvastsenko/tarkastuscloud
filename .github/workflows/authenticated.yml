@@ -74,8 +74,8 @@ jobs:
           for apk in app/build/outputs/apk/debug/*.apk; do
             test -f "$apk"
             "$signer" verify --verbose --print-certs "$apk" | tee "$apk.cert.txt"
-            grep -Fi "Signer #1 certificate SHA-256 digest: 5ae050fda66bdd28efbd178c811fceb3aeb3669c0f8a0b6ae8e279c6a87612d7" "$apk.cert.txt" || { echo "::error::Unexpected Cloud signing certificate"; exit 1; }
-            grep -Fi "Signer #1 certificate SHA-1 digest: ecd6ce941543e92ea89938ef13f2185a9395eaaf" "$apk.cert.txt" || { echo "::error::Unexpected Cloud SHA-1"; exit 1; }
+            grep -Ei "^[[:space:]]*(Signer #1|V[0-9]+ Signer:) ?certificate SHA-256 digest: 5ae050fda66bdd28efbd178c811fceb3aeb3669c0f8a0b6ae8e279c6a87612d7[[:space:]]*$" "$apk.cert.txt" || { echo "::error::Unexpected Cloud signing certificate"; exit 1; }
+            grep -Ei "^[[:space:]]*(Signer #1|V[0-9]+ Signer:) ?certificate SHA-1 digest: ecd6ce941543e92ea89938ef13f2185a9395eaaf[[:space:]]*$" "$apk.cert.txt" || { echo "::error::Unexpected Cloud SHA-1"; exit 1; }
             sha256sum "$apk" > "$apk.sha256"
           done
       - name: Publish unit test reports
