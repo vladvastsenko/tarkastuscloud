@@ -119,3 +119,45 @@ exports.signInExistingGoogle = onCall({region:"europe-west1",maxInstances:5,enfo
     throw new HttpsError("permission-denied","Existing Google account required");
   }
 });
+
+exports.completePremiumGoogleRegistration = onCall({region:"europe-west1",maxInstances:5,enforceAppCheck:true}, async request => {
+  const {purchaseToken,session,permit,idToken} = request.data || {};
+  if (typeof purchaseToken !== "string" || purchaseToken.length < 8 || purchaseToken.length > 4096 ||
+      typeof permit !== "string" || !/^[a-f0-9]{64}$/.test(permit) ||
+      typeof idToken !== "string" || !idToken || idToken.length > 8192)
+    throw new HttpsError("invalid-argument","Invalid registration request");
+  try {
+    const identity = (await googleVerifier.verifyIdToken({idToken,audience:googleAudience.value()})).getPayload();
+    if (!identity?.sub || !identity.email || identity.email_verified !== true) throw new Error("Unverified identity");
+    const address = identity.email.trim().toLowerCase();
+    const db = getFirestore(), admin = getAuth(), client = await auth.getClient();
+    const {data} = await client.request({url:base+"/subscriptionsv2/tokens/"+encodeURIComponent(purchaseToken),timeout:15000});
+    const verified = assertPurchase(data,session);
+    const p = (await db.collection("premiumRegistrationPermits").doc(hash(permit)).get()).data();
+    if (!p || p.claimId !== hash(purchaseToken)) throw new Error("purchase mismatch");
+    const claim = (await db.collection("premiumRegistrationClaims").doc(hash(purchaseToken)).get()).data();
+    const lookup = await admin.getUsers([{providerId:"google.com",providerUid:identity.sub},{email:address}]);
+    if (lookup.users.some(u => u.uid !== claim?.uid)) throw new HttpsError("already-exists","Account already exists");
+    const uid = await reserveAccount(db,permit,session,"google:"+identity.sub,Date.now(),Math.min(verified.expiresAt,Date.now()+60000));
+    let user;
+    try {
+      user = await admin.createUser({uid,email:address,emailVerified:true});
+    } catch (e) {
+      if (e.code !== "auth/uid-already-exists" && e.code !== "auth/email-already-exists") throw e;
+      user = await admin.getUser(uid);
+    }
+    if (user.disabled || user.email?.toLowerCase() !== address) throw new Error("Account mismatch");
+    if (!user.providerData.some(p => p.providerId === "google.com" && p.uid === identity.sub)) {
+      if (user.providerData.length) throw new Error("Provider mismatch");
+      user = await admin.updateUser(uid,{providerToLink:{providerId:"google.com",uid:identity.sub,email:address}});
+    }
+    if (!user.providerData.some(p => p.providerId === "google.com" && p.uid === identity.sub)) throw new Error("Provider not linked");
+    if (data.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
+      await client.request({method:"POST",url:base+"/subscriptions/"+product+"/tokens/"+encodeURIComponent(purchaseToken)+":acknowledge",data:{},timeout:15000});
+    } else if (data.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") throw new Error("Unknown acknowledgement");
+    return {customToken:await admin.createCustomToken(uid)};
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    throw new HttpsError("failed-precondition","Google registration could not be completed");
+  }
+});
