@@ -45,6 +45,7 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.auth.GoogleAuthProvider
 
 @Composable
 internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registrationCheckout: Boolean, onCheckoutFinished: () -> Unit, onCheckoutDeclined: () -> Unit) -> Unit) {
@@ -117,6 +118,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             onDispose { billing.close(); registrationBilling = null; billingReady = false; paidPurchase = null; pendingPurchase = false }
         } else onDispose {}
     }
+    val developerGoogle = BuildConfig.DEBUG && !BuildConfig.OFFLINE_PREVIEW && !BuildConfig.PREMIUM_CHECKOUT_ENABLED
     val webClientId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName).let { if (it != 0) context.getString(it) else "" }
     val options = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -130,13 +132,17 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
                 val token = account.idToken ?: error("Missing Google ID token")
-                FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("signInExistingGoogle")
+                val login = if (developerGoogle) {
+                    check(account.email.equals("vlad.vastsenko@gmail.com", ignoreCase = true))
+                    auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null))
+                } else FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("signInExistingGoogle")
                     .call(mapOf("idToken" to token))
                     .continueWithTask { result ->
                         val customToken = (result.result.data as? Map<*, *>)?.get("customToken") as? String
                             ?: throw IllegalStateException("Missing server credential")
                         auth.signInWithCustomToken(customToken)
-                    }.addOnCompleteListener { task ->
+                    }
+                login.addOnCompleteListener { task ->
                     busy = false
                     if (task.isSuccessful) {
                         guest = false
@@ -193,7 +199,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
             }
             Button(
                 onClick = {
-                    if (!BuildConfig.PREMIUM_CHECKOUT_ENABLED || webClientId.isBlank()) { error = context.getString(R.string.google_failed) }
+                    if ((!developerGoogle && !BuildConfig.PREMIUM_CHECKOUT_ENABLED) || webClientId.isBlank()) { error = context.getString(R.string.google_failed) }
                     else {
                         busy = true
                         error = null
@@ -201,7 +207,7 @@ internal fun CloudAuthGate(content: @Composable (onSignOut: () -> Unit, registra
                         catch (e: Exception) { busy = false; error = localizedAuthError(context, e, R.string.google_failed) }
                     }
                 },
-                enabled = !busy && BuildConfig.PREMIUM_CHECKOUT_ENABLED,
+                enabled = !busy && (developerGoogle || BuildConfig.PREMIUM_CHECKOUT_ENABLED),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.sign_in))
