@@ -56,10 +56,10 @@ jobs:
             test -n "$CLOUD_KEY_ALIAS"
             export CLOUD_KEYSTORE_PATH="$RUNNER_TEMP/cloud-signing.p12"
             umask 077
-            printf '%s' "$CLOUD_KEYSTORE_B64" | base64 --decode > "$CLOUD_KEYSTORE_PATH"
+            printf '%s' "$CLOUD_KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode > "$CLOUD_KEYSTORE_PATH"
             trap 'rm -f "$CLOUD_KEYSTORE_PATH"' EXIT
           else
-            echo "::warning::No permanent Cloud signing key configured; debug APK may not update previous builds."
+            echo "::error::Missing permanent Cloud signing key"; exit 1
           fi
           for attempt in 1 2 3; do
             if gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon -PpremiumCheckout=false -PproductionAds=false; then break; fi
@@ -74,6 +74,7 @@ jobs:
           for apk in app/build/outputs/apk/debug/*.apk; do
             test -f "$apk"
             "$signer" verify --verbose --print-certs "$apk" | tee "$apk.cert.txt"
+            grep -Fi "Signer #1 certificate SHA-256 digest: 5ae050fda66bdd28efbd178c811fceb3aeb3669c0f8a0b6ae8e279c6a87612d7" "$apk.cert.txt" || { echo "::error::Unexpected Cloud signing certificate"; exit 1; }
             sha256sum "$apk" > "$apk.sha256"
           done
       - name: Publish unit test reports
