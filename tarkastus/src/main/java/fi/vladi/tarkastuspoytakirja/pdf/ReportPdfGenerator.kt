@@ -42,11 +42,12 @@ object ReportPdfGenerator {
 
     private fun render(report: InspectionReport, settings: AppSettings, totalPages: Int?, language: String): Pair<PdfDocument, Int> {
         val document = PdfDocument()
-        val logoPath = if (report.settingsSnapshotCreated) report.logoPath else report.logoPath.ifBlank { settings.logoPath }
-        val headerText = if (report.settingsSnapshotCreated) report.headerText else report.headerText.ifBlank { settings.headerText }
-        val footerText = if (report.settingsSnapshotCreated) report.footerText else report.footerText.ifBlank { settings.footerText }
+        val logoPath = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.logoPath else report.logoPath.ifBlank { settings.logoPath }
+        val headerText = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.headerText else report.headerText.ifBlank { settings.headerText }
+        val footerText = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.footerText else report.footerText.ifBlank { settings.footerText }
         val writer = PdfWriter(document, logoPath, headerText, footerText, totalPages, language)
         writer.title(fi.vladi.tarkastuspoytakirja.model.ReportTypes.title(report, language))
+        if (report.reportType != "freeform" || report.useSharedSettings) {
         if (report.customerName.isNotBlank()) writer.labeledField("Tilaaja", report.customerName)
         if (report.customerBusinessId.isNotBlank()) writer.labeledField("Y-tunnus", report.customerBusinessId)
         if (report.customerAddress.isNotBlank() || report.customerPostalCode.isNotBlank() || report.customerCity.isNotBlank()) {
@@ -57,6 +58,7 @@ object ReportPdfGenerator {
         writer.labeledField("Tilaajan puhelinnumero", report.clientPhone)
         writer.labeledField("Tilaajan sähköposti", report.clientEmail)
 
+        }
         if (report.purposeAndScope.isNotBlank()) {
             writer.section("TARKASTUKSEN TARKOITUS JA LAAJUUS")
             writer.field("Tarkastuksen tarkoitus ja laajuus", report.purposeAndScope)
@@ -106,12 +108,12 @@ object ReportPdfGenerator {
             writer.field("Johtopäätökset ja tarvittavat toimenpiteet", report.summary)
         }
 
-        val inspectorName = if (report.settingsSnapshotCreated) report.inspectorName else report.inspectorName.ifBlank { settings.inspectorName }
-        val inspectorCertificate = if (report.settingsSnapshotCreated) report.inspectorCertificateNumber else report.inspectorCertificateNumber.ifBlank { settings.inspectorCertificateNumber }
-        val inspectorPhone = if (report.settingsSnapshotCreated) report.inspectorPhone else report.inspectorPhone.ifBlank { settings.inspectorPhone }
-        val inspectorEmail = if (report.settingsSnapshotCreated) report.inspectorEmail else report.inspectorEmail.ifBlank { settings.inspectorEmail }
-        val signature = if (report.settingsSnapshotCreated) report.signatureStrokes else report.signatureStrokes.ifEmpty { settings.signatureStrokes }
-        val signatureImagePath = if (report.settingsSnapshotCreated) report.signatureImagePath else report.signatureImagePath.ifBlank { settings.signatureImagePath }
+        val inspectorName = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.inspectorName else report.inspectorName.ifBlank { settings.inspectorName }
+        val inspectorCertificate = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.inspectorCertificateNumber else report.inspectorCertificateNumber.ifBlank { settings.inspectorCertificateNumber }
+        val inspectorPhone = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.inspectorPhone else report.inspectorPhone.ifBlank { settings.inspectorPhone }
+        val inspectorEmail = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.inspectorEmail else report.inspectorEmail.ifBlank { settings.inspectorEmail }
+        val signature = if (report.reportType == "freeform" && !report.useSharedSettings) emptyList() else if (report.settingsSnapshotCreated) report.signatureStrokes else report.signatureStrokes.ifEmpty { settings.signatureStrokes }
+        val signatureImagePath = if (report.reportType == "freeform" && !report.useSharedSettings) "" else if (report.settingsSnapshotCreated) report.signatureImagePath else report.signatureImagePath.ifBlank { settings.signatureImagePath }
         if (inspectorName.isNotBlank() || inspectorCertificate.isNotBlank() || inspectorPhone.isNotBlank() || inspectorEmail.isNotBlank() || report.inspectionDate.isNotBlank() || signature.isNotEmpty() || signatureImagePath.isNotBlank()) {
             writer.spacer(18f)
             writer.section("TARKASTAJA")
