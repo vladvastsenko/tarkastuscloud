@@ -117,7 +117,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun TarkastusApp() {
+fun TarkastusApp(onManagement: (() -> Unit)? = null, homeFooter: @Composable () -> Unit = {}) {
     val context = LocalContext.current
     val repository = remember { ReportRepository(context) }
     LaunchedEffect(repository) {
@@ -250,7 +250,9 @@ private fun TarkastusApp() {
                 repository.deleteReport(report.id)
                 reports = repository.listReports()
             },
-            onBackToDocumentSelection = { (context as? Activity)?.finish() }
+            onBackToDocumentSelection = { (context as? Activity)?.finish() },
+            onManagement = onManagement,
+            homeFooter = homeFooter
         )
     } else {
         EditorScreen(
@@ -362,15 +364,24 @@ private fun HomeScreen(
     onCreate: (String) -> Unit,
     onOpen: (InspectionReport) -> Unit,
     onDelete: (InspectionReport) -> Unit,
-    onBackToDocumentSelection: () -> Unit
+    onBackToDocumentSelection: () -> Unit,
+    onManagement: (() -> Unit)? = null,
+    homeFooter: @Composable () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (onManagement != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Tarkastus Cloud", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onManagement) { Text("⚙", style = MaterialTheme.typography.headlineMedium) }
+            }
+        } else {
         Text(stringResource(R.string.report_title_localized), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.loc3_general_intro))
         TextButton(onClick = onBackToDocumentSelection) { Text(stringResource(R.string.ui_back_reports)) }
+        }
         var typeMenu by remember { mutableStateOf(false) }
         val language = AppLanguage.selected(LocalContext.current)
         Box {
@@ -416,6 +427,7 @@ private fun HomeScreen(
         }
         Spacer(Modifier.height(20.dp))
         Text(stringResource(R.string.loc4_local_save_tarkastus), style = MaterialTheme.typography.bodySmall)
+        homeFooter()
     }
 }
 
