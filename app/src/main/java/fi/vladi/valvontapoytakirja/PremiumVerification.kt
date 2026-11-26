@@ -20,11 +20,12 @@ internal fun verifyPremiumPurchase(purchase: Purchase, onResult: (VerifiedSubscr
             val verified = if (task.isSuccessful && auth.currentUser?.uid == uid) {
                 runCatching {
                     val data = task.result.data as Map<*, *>
-                    require(data["uid"] == uid && data["eligible"] == true)
+                    require(data["uid"] == uid)
+                    val eligible = data["eligible"] as Boolean
                     val state = SubscriptionState.valueOf(data["state"] as String)
                     val expiry = (data["expiresAt"] as Number).toLong()
                     VerifiedSubscription(uid, state, minOf(expiry, System.currentTimeMillis() + 300_000))
-                        .takeIf { it.permitsPremium(uid, System.currentTimeMillis()) }
+                        .let { if (eligible) it.takeIf { sub -> sub.permitsPremium(uid, System.currentTimeMillis()) } else it.copy(expiresAt = 0L) }
                 }.getOrNull()
             } else null
             onResult(verified)

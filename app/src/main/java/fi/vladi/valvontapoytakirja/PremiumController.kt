@@ -52,7 +52,7 @@ internal class PremiumController {
                 if (epoch == generation && account == uid) {
                     val duration = ((verified?.expiresAt ?: 0L) - System.currentTimeMillis()).coerceIn(0L, 300000L)
                     deadline = start + duration
-                    active = verified != null && SystemClock.elapsedRealtime() < deadline
+                    active = verified?.permitsPremium(account, System.currentTimeMillis()) == true && SystemClock.elapsedRealtime() < deadline
                     subscriptionState = verified?.state ?: SubscriptionState.UNKNOWN
                     PremiumAccess.update(if (active) verified else null, deadline)
                     error = verified == null

@@ -49,37 +49,7 @@ object CloudBackupManager {
 
     private fun writeArchive(context: Context, tempZip: File) {
             fi.vladi.valvontapoytakirja.CustomStore.withStorageLock {
-            ZipOutputStream(BufferedOutputStream(FileOutputStream(tempZip))).use { zip ->
-                zip.putNextEntry(ZipEntry(MANIFEST))
-                zip.write((MANIFEST_CONTENT + "\n").toByteArray(Charsets.UTF_8))
-                zip.closeEntry()
-
-                val root = context.filesDir
-                var entries = 1
-                var bytes = 0L
-                root.walkTopDown()
-                    .filter { it.isFile && !it.name.endsWith(".pending") && !it.name.endsWith(".new") }
-                    .forEach { file ->
-                        val relative = file.relativeTo(root).invariantSeparatorsPath
-                        require(relative.isNotBlank() && !relative.startsWith("../")) {
-                            "Virheellinen tiedostopolku varmuuskopiossa."
-                        }
-                        require(++entries <= MAX_ENTRIES)
-                        require(file.canonicalPath.startsWith(root.canonicalPath + File.separator))
-                        zip.putNextEntry(ZipEntry("files/$relative"))
-                        FileInputStream(file).buffered().use { input ->
-                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                            while (true) {
-                                val n = input.read(buffer)
-                                if (n < 0) break
-                                bytes += n
-                                require(bytes <= MAX_UNPACKED_BYTES) { "Backup exceeds restore limit" }
-                                zip.write(buffer,0,n)
-                            }
-                        }
-                        zip.closeEntry()
-                    }
-            }
+            writeBackupArchive(context.filesDir, tempZip, MAX_ENTRIES, MAX_UNPACKED_BYTES)
 
             }
 
@@ -106,6 +76,7 @@ object CloudBackupManager {
         val tempZip = File(context.cacheDir, "tarkastuscloud_backup_${System.currentTimeMillis()}.zip")
         try {
             writeArchive(context, tempZip)
+            fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
             val displayName = "TarkastusCloud_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
             check(folder.findFile(displayName) == null) { "Backup already exists" }
             val target = folder.createFile("application/zip", displayName)
@@ -143,6 +114,7 @@ object CloudBackupManager {
             val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val pathColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
             while (cursor.moveToNext()) {
+                fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
                 val displayName = cursor.getString(nameColumn) ?: continue
                 val relativePath = cursor.getString(pathColumn) ?: continue
                 val subPath = relativePath.removePrefix(basePath).trim('/')
