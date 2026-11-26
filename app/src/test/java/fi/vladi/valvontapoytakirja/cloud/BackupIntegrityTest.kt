@@ -26,6 +26,15 @@ class BackupIntegrityTest {
         val bytes = archive()
         assertThrows(Exception::class.java) { extractBackup(bytes.copyOf(bytes.size-22).inputStream(),dir) }
     }
+    @Test fun rejectsCorruptCentralChecksum() = staged { dir ->
+        val bytes = archive()
+        val offset = (0..bytes.size-46).first { i ->
+            bytes[i] == 0x50.toByte() && bytes[i+1] == 0x4b.toByte() &&
+            bytes[i+2] == 1.toByte() && bytes[i+3] == 2.toByte()
+        }
+        bytes[offset+16] = (bytes[offset+16].toInt() xor 1).toByte()
+        assertThrows(Exception::class.java) { extractBackup(bytes.inputStream(),dir) }
+    }
     @Test fun rejectsDotAlias() = staged { dir ->
         assertThrows(Exception::class.java) { extractBackup(archive("files/./photo.image").inputStream(),dir) }
     }

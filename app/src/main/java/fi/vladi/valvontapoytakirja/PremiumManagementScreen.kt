@@ -34,14 +34,14 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
     val l = labels(lang)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Tarkastus Cloud Premium", style = MaterialTheme.typography.headlineMedium)
-        Text(if (controller.active) "Premium" else "Free")
+        Text(if (controller.active) "Premium" else subscriptionLabel(lang, SubscriptionState.FREE))
         Text(premiumTerms(lang).first)
         controller.offer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice?.let { Text(it) }
         if (BuildConfig.DEBUG && BuildConfig.OFFLINE_PREVIEW) {
             Text("TEST · Free / Premium")
             SubscriptionState.values().forEach { state ->
                 OutlinedButton(onClick = { controller.simulate(state) }, modifier = Modifier.fillMaxWidth()) {
-                    Text(state.name + if (controller.simulatedState == state) " ✓" else "")
+                    Text(subscriptionLabel(lang, state) + if (controller.simulatedState == state) " ✓" else "")
                 }
             }
         } else if (controller.uid == null && !BuildConfig.OFFLINE_PREVIEW) {
