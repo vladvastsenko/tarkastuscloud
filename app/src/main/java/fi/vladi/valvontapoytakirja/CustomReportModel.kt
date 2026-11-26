@@ -12,7 +12,7 @@ internal fun customId() = UUID.randomUUID().toString()
 @Serializable
 internal enum class CustomKind { TEXT, LONG_TEXT, NUMBER, DATE_TIME, CHECKBOX, SINGLE, MULTIPLE, PHOTOS, SIGNATURE, HEADING, TABLE }
 @Serializable
-internal data class CustomField(val id: String = customId(), val label: String = "", val kind: CustomKind = CustomKind.TEXT, val required: Boolean = false, val options: List<String> = emptyList(), val defaultValue: String = "")
+internal data class CustomField(val id: String = customId(), val label: String = "", val kind: CustomKind = CustomKind.TEXT, val required: Boolean = false, val options: List<String> = emptyList(), val defaultValue: String = "", val photoColumns: Int = 2, val photoRows: Int = 2, val separatePhotoPages: Boolean = false)
 @Serializable
 internal data class CustomSection(val id: String = customId(), val title: String = "", val fields: List<CustomField> = emptyList())
 @Serializable

@@ -66,6 +66,7 @@ internal fun CustomReportScreen(onBack: () -> Unit) {
                         OutlinedTextField(f.label, { change(f.copy(label = it)) }, label = { Text(l[8]) })
                         var menu by remember { mutableStateOf(false) }
                         Box { OutlinedButton(onClick = { menu = true }) { Text(l[25+f.kind.ordinal]) }; DropdownMenu(menu,{ menu = false }) { CustomKind.entries.forEach { k -> DropdownMenuItem(text = { Text(l[25+k.ordinal]) }, onClick = { change(f.copy(kind = k)); menu = false }) } } }
+                        if (f.kind == CustomKind.PHOTOS) CustomPhotoLayout(f, { change(it) })
                         if (f.kind != CustomKind.HEADING) {
                             Row { Checkbox(f.required,{ change(f.copy(required = it)) }); Text(l[9]) }
                             if (f.kind in listOf(CustomKind.SINGLE,CustomKind.MULTIPLE,CustomKind.TABLE)) OutlinedTextField(f.options.joinToString("\n"), { change(f.copy(options = it.split("\n"))) }, label = { Text(l[10]) })

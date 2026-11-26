@@ -13,8 +13,12 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
     var page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create())
     var y = 44f
     fun finish() { paint.textSize = 10f; page.canvas.drawText(pageNumber.toString(), 550f, 815f, paint); pdf.finishPage(page) }
-    fun space(height: Float) { if (y + height > 790f) { finish(); page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create()); y = 44f } }
+    fun newPage() { finish(); page = pdf.startPage(PdfDocument.PageInfo.Builder(595,842,++pageNumber).create()); y = 44f }
+    fun space(height: Float) { if (y + height > 790f) newPage() }
+    var afterDedicatedPhotos = false
+    fun resumeText() { if (afterDedicatedPhotos) { newPage(); afterDedicatedPhotos = false } }
     fun line(text: String, bold: Boolean = false) {
+        resumeText()
         paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
         paint.textSize = if (bold) 15f else 12f
         for (paragraph in text.split("\n")) {
@@ -73,6 +77,37 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
             y += 12f
         }
     }
+    fun photoGrid(f: CustomField, names: List<String>) {
+        if (names.isEmpty()) return
+        val cols = f.gridColumns()
+        val rows = f.gridRows()
+        val gap = 8f
+        val width = (510f-gap*(cols-1))/cols
+        // Fixed geometry for every page, including the final partial page.
+        val height = (746f-gap*(rows-1))/rows
+        if (f.separatePhotoPages && y > 44f) newPage()
+        for (row in names.chunked(cols)) {
+            space(height)
+            row.forEachIndexed { index,name ->
+                val file = store.image(name)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.path,bounds)
+                var sample = 1
+                while (bounds.outWidth/sample > 1600 || bounds.outHeight/sample > 1600) sample *= 2
+                val bitmap = BitmapFactory.decodeFile(file.path,BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("Unreadable image")
+                try {
+                    val scale = minOf(width/bitmap.width,height/bitmap.height)
+                    val w = bitmap.width*scale
+                    val h = bitmap.height*scale
+                    val x = 42f+index*(width+gap)+(width-w)/2
+                    val top = y+(height-h)/2
+                    page.canvas.drawBitmap(bitmap,null,RectF(x,top,x+w,top+h),paint)
+                } finally { bitmap.recycle() }
+            }
+            y += height+gap
+        }
+        if (f.separatePhotoPages) afterDedicatedPhotos = true
+    }
     try {
         line(report.template.title,true)
         for (s in report.template.sections) {
@@ -83,6 +118,10 @@ internal fun exportCustomPdf(context: Context, store: CustomStore, report: Custo
                 line(f.label,true)
                 val value = report.values[f.id] ?: f.defaultValue
                 if (f.kind == CustomKind.TABLE) table(f,value) else if (f.kind != CustomKind.HEADING && value.isNotBlank()) line(value)
+                if (f.kind == CustomKind.PHOTOS) {
+                    photoGrid(f,report.attachments[f.id].orEmpty())
+                    continue
+                }
                 for (name in report.attachments[f.id].orEmpty()) {
                     val file = store.image(name)
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
