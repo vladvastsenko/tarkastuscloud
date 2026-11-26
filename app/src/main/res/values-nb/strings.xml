@@ -214,7 +214,7 @@
     <string name="ui_preview_pdf">Forhåndsvis PDF</string>
     <string name="ui_preview_unavailable">Ingen PDF-leser installert</string>
     <string name="guest_continue">Fortsett uten registrering</string>
-    <string name="guest_explanation">Opprett og lagre rapporter lokalt. Skysynkronisering krever innlogging.</string>
+    <string name="guest_explanation">Registrering er bare nødvendig for Premium. Opprett, rediger og lagre rapporter lokalt gratis uten konto. Premium gir skysynkronisering og fjerner annonser.</string>
     <string name="guest_local_notice">Gjestemodus: rapporter lagres bare på denne enheten. Skysynkronisering krever innlogging.</string>
     <string name="guest_sign_in">Logg inn / Registrer deg</string>
     <string name="guest_cloud_required">Skysynkronisering krever innlogging.</string>
