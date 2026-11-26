@@ -65,7 +65,7 @@ class BackupRoundTripTest {
                 InspectionReport(id=type,reportType=type,siteName="Site",signatureImagePath=png.path,logoPath=png.path,
                     observations=listOf(InspectionObservation(description="Observation",photos=listOf(ReportPhoto(filePath=jpeg.path,annotatedPath=png.path)))))
             }
-            assertEquals(7,reports.size)
+            assertEquals(setOf("inspection", "defects", "handover", "warranty", "visit", "supervision", "custom", "freeform"), reports.map { it.reportType }.toSet())
             fun repository(dir: File): fi.vladi.tarkastuspoytakirja.data.ReportRepository {
                 val baseContext = org.robolectric.RuntimeEnvironment.getApplication()
                 val context = object : android.content.ContextWrapper(baseContext) {
@@ -102,7 +102,8 @@ class BackupRoundTripTest {
             assertFalse(root.exists())
             for (destination in listOf(restored,third)) {
                 val loaded = repository(destination).listReports()
-                assertEquals(7,loaded.size)
+                assertEquals(reports.size,loaded.size)
+                assertEquals(reports.map { it.reportType }.toSet(), loaded.map { it.reportType }.toSet())
                 fun checkImage(path: String) {
                     assertTrue(File(path).canonicalPath.startsWith(destination.canonicalPath + File.separator))
                     val bitmap = BitmapFactory.decodeFile(path) ?: error("Missing image: " + path)
