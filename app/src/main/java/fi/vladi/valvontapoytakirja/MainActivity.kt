@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,7 +183,7 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
         withContext(Dispatchers.IO) { SharedDocumentsArchive.ensureFolder(context) }
     }
     val premium = rememberPremiumController()
-    var showPremium by remember { mutableStateOf(registrationCheckout) }
+    var showPremium by rememberSaveable { mutableStateOf(registrationCheckout) }
     LaunchedEffect(registrationCheckout, premium.active) {
         if (registrationCheckout) {
             showPremium = true
@@ -193,13 +194,13 @@ private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean
         showPremium = false
         if (registrationCheckout && !premium.active) onCheckoutDeclined()
     }
-    var showLocalBackup by remember { mutableStateOf(false) }
+    var showLocalBackup by rememberSaveable { mutableStateOf(false) }
     val consent = remember(context) { if (BuildConfig.OFFLINE_PREVIEW) null else AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent?.request() }
-    var showSharedSettings by remember { mutableStateOf(false) }
-    var showManagement by remember { mutableStateOf(false) }
-    var showCloudBackup by remember { mutableStateOf(false) }
-    var showUserGuide by remember { mutableStateOf(false) }
+    var showSharedSettings by rememberSaveable { mutableStateOf(false) }
+    var showManagement by rememberSaveable { mutableStateOf(false) }
+    var showCloudBackup by rememberSaveable { mutableStateOf(false) }
+    var showUserGuide by rememberSaveable { mutableStateOf(false) }
 
     androidx.activity.compose.BackHandler(enabled = (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
         when {
