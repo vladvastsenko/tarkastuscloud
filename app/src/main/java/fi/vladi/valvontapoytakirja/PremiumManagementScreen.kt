@@ -28,7 +28,7 @@ private fun labels(language: String): List<String> = when(language) {
     else -> listOf("Subscribe", "Restore subscription", "Payment unavailable", "Checking…")
 }
 @Composable
-internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -> Unit, onSignIn: () -> Unit) {
+internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -> Unit, onSignIn: () -> Unit, registrationCheckout: Boolean = false) {
     val context = LocalContext.current
     val lang = AppLanguage.selected(context)
     val l = labels(lang)
@@ -59,6 +59,11 @@ internal fun PremiumManagementScreen(controller: PremiumController, onBack: () -
         if (controller.busy) Text(l[3])
         if (controller.error) Text(l[2], color = MaterialTheme.colorScheme.error)
         if (!BuildConfig.PREMIUM_CHECKOUT_ENABLED || !controller.ready) Text(l[2])
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+        if (registrationCheckout && !controller.active) {
+            Button(onClick = onBack, enabled = !controller.busy, modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFC8E6C9), contentColor = androidx.compose.ui.graphics.Color(0xFF173D20))) {
+                Text(stringResource(R.string.guest_continue))
+            }
+        } else TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }
