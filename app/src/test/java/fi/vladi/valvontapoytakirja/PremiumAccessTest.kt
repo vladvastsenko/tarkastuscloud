@@ -22,3 +22,15 @@ class PremiumAccessTest {
         }
     }
 }
+
+class DeveloperAccessTest {
+    @org.junit.Test fun onlyVerifiedDeveloperInTestBuild() {
+        val email = "vlad.vastsenko@gmail.com"
+        for (debug in listOf(false,true)) for (preview in listOf(false,true))
+            for (checkout in listOf(false,true)) for (verified in listOf(false,true))
+                for (candidate in listOf(null,email,email.uppercase(),"other@example.com")) {
+                    val expected = debug && !preview && !checkout && verified && candidate?.lowercase() == email
+                    org.junit.Assert.assertEquals(expected, permitsDeveloperTest(debug,preview,checkout,verified,candidate))
+                }
+    }
+}
