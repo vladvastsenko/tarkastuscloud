@@ -16,7 +16,8 @@ dependencyResolutionManagement {
             }
             filter {
                 includeModule("org.reactivestreams", "reactive-streams")
-                includeModule("com.squareup.okhttp3", "okhttp")
+                includeGroup("com.squareup.okhttp3")
+                includeGroup("com.squareup.okio")
             }
         }
         mavenCentral()
