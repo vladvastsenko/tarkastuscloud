@@ -70,8 +70,15 @@ exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInst
     const p = (await db.collection("premiumRegistrationPermits").doc(hash(permit)).get()).data();
     if (!p || p.claimId !== hash(purchaseToken)) throw new Error("purchase mismatch");
     const address = email.trim().toLowerCase();
-    const uid = await reserveAccount(db,permit,session,address);
     const admin = getAuth();
+    const claim = (await db.collection("premiumRegistrationClaims").doc(hash(purchaseToken)).get()).data();
+    const existingEmail = await admin.getUserByEmail(address).catch(e => {
+      if (e.code === "auth/user-not-found") return null;
+      throw e;
+    });
+    if (existingEmail && existingEmail.uid !== claim?.uid)
+      throw new HttpsError("already-exists","Email already registered");
+    const uid = await reserveAccount(db,permit,session,address);
     try {
       await admin.createUser({uid,email:address,password,emailVerified:false});
     } catch (e) {
@@ -84,6 +91,7 @@ exports.completePremiumEmailRegistration = onCall({region:"europe-west1",maxInst
     } else if (data.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") throw new Error("unknown acknowledgement");
     return {created:true};
   } catch (_) {
+    if (_ instanceof HttpsError) throw _;
     throw new HttpsError("failed-precondition","Registration could not be completed");
   }
 });
