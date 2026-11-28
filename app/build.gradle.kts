@@ -8,22 +8,27 @@ plugins {
 
 val preview = providers.gradleProperty("offlinePreview").orNull == "true"
 if (!preview) apply(plugin = "com.google.gms.google-services")
+val productionAds = !preview && providers.gradleProperty("productionAds").orNull == "true"
 
-val cloudKeystorePath = System.getenv("PRO_KEYSTORE_PATH")
-val cloudKeystorePassword = System.getenv("PRO_KEYSTORE_PASSWORD")
-val cloudKeyAlias = System.getenv("PRO_KEY_ALIAS")
+val cloudKeystorePath = System.getenv("CLOUD_KEYSTORE_PATH")
+val cloudKeystorePassword = System.getenv("CLOUD_KEYSTORE_PASSWORD")
+val cloudKeyAlias = System.getenv("CLOUD_KEY_ALIAS")
 
 android {
     namespace = "fi.vladi.valvontapoytakirja"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "fi.vladi.tarkastuspro"
+        applicationId = "fi.vladi.tarkastuscloud"
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         targetSdk = 35
         versionCode = 1
         versionName = if (preview) "0.1.0-preview" else "0.1.0"
         buildConfigField("boolean", "OFFLINE_PREVIEW", preview.toString())
+        buildConfigField("boolean", "PREMIUM_CHECKOUT_ENABLED", (!preview && providers.gradleProperty("premiumCheckout").orNull == "true").toString())
+        manifestPlaceholders["cloudAdMobAppId"] = if (!preview) "ca-app-pub-5274592019802045~8397178305" else "ca-app-pub-3940256099942544~3347511713"
+        buildConfigField("String", "CLOUD_BANNER_ID", if (productionAds) "\"ca-app-pub-5274592019802045/9861021951\"" else "\"ca-app-pub-3940256099942544/6300978111\"")
     }
 
     if (!cloudKeystorePath.isNullOrBlank() &&
@@ -37,6 +42,12 @@ android {
             keyPassword = cloudKeystorePassword
         }
         buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("cloud")
+    }
+
+    testOptions {
+        unitTests.all {
+            it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2")
+        }
     }
 
     buildFeatures {
@@ -55,9 +66,16 @@ android {
 }
 
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     implementation(project(":tarkastus"))
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-functions")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("com.android.billingclient:billing:8.1.0")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.gms:play-services-ads:24.7.0")
     implementation("com.google.android.ump:user-messaging-platform:3.2.0")

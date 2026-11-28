@@ -26,56 +26,76 @@ object CloudBackupManager {
     data class BackupFile(val uri: Uri, val name: String, val sizeBytes: Long, val lastModified: Long)
 
     fun listBackups(context: Context, treeUri: Uri): List<BackupFile> {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val folder = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(folder.isDirectory && folder.canRead()) { "Valitun Google Drive -kansion sisältöä ei voi lukea." }
         return folder.listFiles()
-            .filter { it.isFile && it.name?.startsWith("TarkastusPro_backup_") == true && it.name?.endsWith(".zip") == true }
+            .filter { it.isFile && it.name?.startsWith("TarkastusCloud_backup_") == true && it.name?.endsWith(".zip") == true }
             .map { BackupFile(it.uri, it.name.orEmpty(), it.length(), it.lastModified()) }
             .sortedByDescending { backupTimestamp(it.name) ?: it.lastModified }
     }
 
     private fun backupTimestamp(name: String): Long? {
-        val stamp = name.removePrefix("TarkastusPro_backup_").removeSuffix(".zip")
+        val stamp = name.removePrefix("TarkastusCloud_backup_").removeSuffix(".zip")
         return listOf("yyyyMMdd_HHmmss_SSS", "yyyyMMdd_HHmmss").firstNotNullOfOrNull { pattern ->
             runCatching { SimpleDateFormat(pattern, Locale.US).parse(stamp)?.time }.getOrNull()
         }
     }
-    private const val MANIFEST = "TARKASTUSPRO_BACKUP_INFO.txt"
-    private const val MANIFEST_CONTENT = "TARKASTUSPRO_BACKUP_V1"
+    private const val MANIFEST = "TARKASTUSCLOUD_BACKUP_INFO.txt"
+    private const val MANIFEST_CONTENT = "TARKASTUSCLOUD_BACKUP_V1"
     private const val MAX_ENTRIES = 20_000
     private const val MAX_UNPACKED_BYTES = 2L * 1024L * 1024L * 1024L
 
+    private fun writeArchive(context: Context, tempZip: File) {
+            fi.vladi.valvontapoytakirja.CustomStore.withStorageLock {
+            writeBackupArchive(context.filesDir, tempZip, MAX_ENTRIES, MAX_UNPACKED_BYTES)
+
+            }
+
+    }
+
+    fun retainedCopies(context: Context): List<File> =
+        File(context.applicationInfo.dataDir).listFiles()?.filter {
+            it.isDirectory && it.name.matches(Regex("tarkastus_retained_[0-9a-f-]{36}")) &&
+                it.canonicalFile.parentFile == File(context.applicationInfo.dataDir).canonicalFile
+        }?.sortedByDescending { it.lastModified() }.orEmpty()
+
+    fun exportRetainedCopy(context: Context, name: String, uri: Uri) {
+        val root = retainedCopies(context).firstOrNull { it.name == name } ?: error("Copy not found")
+        val temp = File.createTempFile("retained-", ".zip", context.cacheDir)
+        try {
+            writeBackupArchive(root, temp, MAX_ENTRIES, MAX_UNPACKED_BYTES)
+            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                temp.inputStream().use { it.copyTo(out) }
+            } ?: error("Cannot open destination")
+        } finally { temp.delete() }
+    }
+
+    fun backupToDocument(context: Context, uri: Uri) {
+        val temp = File.createTempFile("local-backup-", ".zip", context.cacheDir)
+        try {
+            writeArchive(context, temp)
+            context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                temp.inputStream().buffered().use { it.copyTo(output) }
+            } ?: error("Cannot write backup")
+        } finally { temp.delete() }
+    }
+
     fun backupToFolder(context: Context, treeUri: Uri): String {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val folder = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(folder.isDirectory && folder.canWrite()) {
             "Valittuun kansioon ei voi tallentaa."
         }
 
-        val tempZip = File(context.cacheDir, "tarkastuspro_backup_${System.currentTimeMillis()}.zip")
+        val tempZip = File(context.cacheDir, "tarkastuscloud_backup_${System.currentTimeMillis()}.zip")
         try {
-            ZipOutputStream(BufferedOutputStream(FileOutputStream(tempZip))).use { zip ->
-                zip.putNextEntry(ZipEntry(MANIFEST))
-                zip.write((MANIFEST_CONTENT + "\n").toByteArray(Charsets.UTF_8))
-                zip.closeEntry()
-
-                val root = context.filesDir
-                root.walkTopDown()
-                    .filter { it.isFile }
-                    .forEach { file ->
-                        val relative = file.relativeTo(root).invariantSeparatorsPath
-                        require(relative.isNotBlank() && !relative.startsWith("../")) {
-                            "Virheellinen tiedostopolku varmuuskopiossa."
-                        }
-                        zip.putNextEntry(ZipEntry("files/$relative"))
-                        FileInputStream(file).buffered().use { input -> input.copyTo(zip) }
-                        zip.closeEntry()
-                    }
-            }
-
-            val displayName = "TarkastusPro_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
-            folder.findFile(displayName)?.delete()
+            writeArchive(context, tempZip)
+            fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
+            val displayName = "TarkastusCloud_backup_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.zip"
+            check(folder.findFile(displayName) == null) { "Backup already exists" }
             val target = folder.createFile("application/zip", displayName)
                 ?: error("Varmuuskopiotiedostoa ei voitu luoda Google Driveen.")
             try {
@@ -96,7 +116,7 @@ object CloudBackupManager {
     private fun copyPdfExportsToDrive(context: Context, destinationRoot: DocumentFile): Int {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return 0
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val basePath = "${Environment.DIRECTORY_DOCUMENTS}/TarkastusPro/"
+        val basePath = "${Environment.DIRECTORY_DOCUMENTS}/TarkastusCloud/"
         val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND ${MediaStore.MediaColumns.MIME_TYPE} = ?"
         val args = arrayOf("${basePath}Raportit/PDF/%", "application/pdf")
         var copied = 0
@@ -111,17 +131,18 @@ object CloudBackupManager {
             val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val pathColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
             while (cursor.moveToNext()) {
+                fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
                 val displayName = cursor.getString(nameColumn) ?: continue
                 val relativePath = cursor.getString(pathColumn) ?: continue
                 val subPath = relativePath.removePrefix(basePath).trim('/')
-                if (subPath.isBlank() || subPath.split('/').any { it == ".." || it.isBlank() }) continue
+                if (subPath.isBlank() || subPath.split('/').any { it == ".." || it == "." || it.isBlank() }) continue
                 var folder = destinationRoot
                 subPath.split('/').forEach { segment ->
                     folder = folder.findFile(segment) ?: folder.createDirectory(segment) ?: error("Drive-kansiota ei voitu luoda.")
                 }
                 val existing = folder.findFile(displayName)
-                existing?.delete()
-                val target = folder.createFile("application/pdf", displayName)
+                val temporaryName = if (existing == null) displayName else "pending-${java.util.UUID.randomUUID()}.pdf"
+                val target = folder.createFile("application/pdf", temporaryName)
                     ?: error("PDF-tiedostoa ei voitu luoda Google Driveen.")
                 val sourceUri = android.content.ContentUris.withAppendedId(collection, cursor.getLong(idColumn))
                 try {
@@ -130,6 +151,15 @@ object CloudBackupManager {
                             input.copyTo(output)
                         } ?: error("PDF-tiedostoa ei voitu kirjoittaa Driveen.")
                     } ?: error("PDF-tiedostoa ei voitu lukea.")
+                    if (existing != null) {
+                        val oldName = "previous-${java.util.UUID.randomUUID()}.pdf"
+                        check(existing.renameTo(oldName)) { "Cannot preserve previous PDF" }
+                        if (!target.renameTo(displayName)) {
+                            existing.renameTo(displayName)
+                            error("Cannot publish PDF; previous copy retained")
+                        }
+                        existing.delete()
+                    }
                     copied++
                 } catch (error: Throwable) {
                     target.delete()
@@ -140,85 +170,24 @@ object CloudBackupManager {
         return copied
     }
 
+    fun restoreCloudFromUri(context: Context, archiveUri: Uri): String {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
+        return restoreFromUri(context, archiveUri)
+    }
+
     fun restoreFromUri(context: Context, archiveUri: Uri): String {
-        // Recover the original directory before preparing a new restore.
-        val original = context.filesDir
-        val previousRecovery = File(original.parentFile, "tarkastus_restore_previous")
-        if (previousRecovery.exists()) {
-            if (!original.exists()) {
-                check(previousRecovery.renameTo(original)) {
-                    "Keskeytyneen palautuksen alkuperäisiä tietoja ei voitu palauttaa."
-                }
-            } else {
-                error("Aiemman palautuksen turvakopio on olemassa. Tarkista tiedot ennen uutta palautusta.")
-            }
-        }
+        val original = File(context.applicationInfo.dataDir, "files")
+        recoverInterruptedRestore(original)
         // Stage beside filesDir so the final rename stays on the same filesystem.
         val staging = File(context.filesDir.parentFile, "tarkastus_restore_staging").apply {
             deleteRecursively()
             check(mkdirs()) { "Palautuksen väliaikaista kansiota ei voitu luoda." }
         }
-        var manifestFound = false
-        val seenEntries = hashSetOf<String>()
-        var entryCount = 0
-        var totalBytes = 0L
-
         try {
             val input = context.contentResolver.openInputStream(archiveUri)
-                ?: error("Varmuuskopioita ei voitu avata.")
-            ZipInputStream(BufferedInputStream(input)).use { zip ->
-                while (true) {
-                    val entry = zip.nextEntry ?: break
-                    entryCount++
-                    require(entryCount <= MAX_ENTRIES) { "Varmuuskopiossa on liian monta tiedostoa." }
-
-                    val name = entry.name.replace('\\', '/')
-                    require(seenEntries.add(name)) { "Varmuuskopiossa on päällekkäinen tiedostopolku." }
-                    require(!name.startsWith("/") && name.split('/').none { it == ".." || it.isBlank() }) {
-                        "Varmuuskopiossa on virheellinen tiedostopolku."
-                    }
-
-                    if (name == MANIFEST) {
-                        val manifestBytes = ByteArray(128)
-                        val count = zip.read(manifestBytes)
-                        require(count in 1..127 && zip.read() == -1) { "Varmuuskopion tunnistetiedot ovat virheelliset." }
-                        val text = String(manifestBytes, 0, count, Charsets.UTF_8).trim()
-                        require(text == MANIFEST_CONTENT) { "Tiedosto ei ole Tarkastus-varmuuskopio." }
-                        manifestFound = true
-                    } else if (name.startsWith("files/") && name.length > 6) {
-                        val relative = name.removePrefix("files/")
-                        val destination = File(staging, relative)
-                        val canonicalRoot = staging.canonicalFile
-                        val canonicalDestination = destination.canonicalFile
-                        require(canonicalDestination.path.startsWith(canonicalRoot.path + File.separator)) {
-                            "Varmuuskopiossa on kielletty tiedostopolku."
-                        }
-                        if (entry.isDirectory) {
-                            destination.mkdirs()
-                        } else {
-                            destination.parentFile?.mkdirs()
-                            FileOutputStream(destination).buffered().use { output ->
-                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                while (true) {
-                                    val count = zip.read(buffer)
-                                    if (count < 0) break
-                                    totalBytes += count
-                                    require(totalBytes <= MAX_UNPACKED_BYTES) {
-                                        "Varmuuskopio on liian suuri palautettavaksi."
-                                    }
-                                    output.write(buffer, 0, count)
-                                }
-                            }
-                        }
-                    } else {
-                        require(name == MANIFEST) { "Varmuuskopio sisältää tuntemattoman tiedoston." }
-                    }
-                    zip.closeEntry()
-                }
-            }
-            check(manifestFound) { "Varmuuskopion tunnistetietoja ei löytynyt." }
-            check(seenEntries.size > 1) { "Varmuuskopio ei sisällä palautettavia tiedostoja." }
-
+                ?: error("Cannot open backup")
+            extractBackup(input, staging, MAX_ENTRIES, MAX_UNPACKED_BYTES)
+            relocateBackupPaths(staging, original)
             // Keep the current local data until the complete archive has been extracted and validated.
             val current = context.filesDir
             val previous = File(current.parentFile, "tarkastus_restore_previous")
@@ -235,7 +204,8 @@ object CloudBackupManager {
                 check(previous.renameTo(current)) { "Palautus epäonnistui. Alkuperäiset tiedot ovat turvakansiossa." }
                 error("Varmuuskopion käyttöönotto epäonnistui. Nykyiset tiedot palautettiin.")
             }
-            previous.deleteRecursively()
+            val retained = File(current.parentFile, "tarkastus_retained_" + java.util.UUID.randomUUID())
+            check(previous.renameTo(retained)) { "Restored data installed; previous data retained in recovery folder" }
             return "Varmuuskopio palautettiin onnistuneesti."
         } catch (error: Throwable) {
             staging.deleteRecursively()

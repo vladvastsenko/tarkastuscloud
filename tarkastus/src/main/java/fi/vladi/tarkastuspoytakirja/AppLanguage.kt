@@ -11,6 +11,13 @@ object AppLanguage {
     val supported = options.map { it.first }.toSet()
     fun label(code: String): String = options.firstOrNull { it.first == code }?.second ?: "English"
 
+    fun flaggedLabel(code: String): String = "${when (code) {
+        "en" -> "🇬🇧"; "fi" -> "🇫🇮"; "sv" -> "🇸🇪"; "nb" -> "🇳🇴"
+        "da" -> "🇩🇰"; "et" -> "🇪🇪"; "lv" -> "🇱🇻"; "lt" -> "🇱🇹"
+        "ru" -> "🇷🇺"; "fr" -> "🇫🇷"; "es" -> "🇪🇸"; "it" -> "🇮🇹"
+        "de" -> "🇩🇪"; "pl" -> "🇵🇱"; else -> "🌐"
+    }} ${label(code)}"
+
     fun selected(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY, "en")?.takeIf { it in supported } ?: "en"

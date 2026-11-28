@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-private const val BACKUP_PREFS = "tarkastus_pro_backup"
+private const val BACKUP_PREFS = "tarkastus_cloud_universal_backup"
 private const val DRIVE_TREE_URI = "drive_tree_uri"
 private const val PRIVATE_BACKUP_TREE_URI = "private_backup_tree_uri"
 
@@ -76,6 +76,7 @@ fun CloudBackupScreen(onBack: () -> Unit) {
     var showSyncConfirmation by remember { mutableStateOf(false) }
     var showShareGuide by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    androidx.activity.compose.BackHandler { if (!busy) onBack() }
 
     LaunchedEffect(privateBackupUri, folderUri) {
         val savedUri = privateBackupUri
@@ -237,9 +238,8 @@ fun CloudBackupScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     showShareGuide = false
                     val driveIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/drive/my-drive"))
-                    val appIntent = Intent(driveIntent).setPackage("com.google.android.apps.docs")
-                    try { context.startActivity(appIntent) }
-                    catch (_: ActivityNotFoundException) { context.startActivity(driveIntent) }
+                    runCatching { context.startActivity(Intent.createChooser(driveIntent, null)) }
+                        .onFailure { status = context.getString(R.string.cloud_read_error, it.message ?: context.getString(R.string.cloud_unknown_error)) }
                 }) { Text(stringResource(R.string.cloud_share_open_drive)) }
             },
             dismissButton = { TextButton(onClick = { showShareGuide = false }) {
@@ -290,7 +290,7 @@ fun CloudBackupScreen(onBack: () -> Unit) {
                         status = try {
                             check(tree != null) { context.getString(R.string.cloud_private_backup_invalid) }
                             val safetyCopy = withContext(Dispatchers.IO) { CloudBackupManager.backupToFolder(context, tree) }
-                            withContext(Dispatchers.IO) { CloudBackupManager.restoreFromUri(context, backupToRestore.uri) }
+                            withContext(Dispatchers.IO) { CloudBackupManager.restoreCloudFromUri(context, backupToRestore.uri) }
                             restoreCompleted = true
                             context.getString(R.string.cloud_restore_safety_copy, context.getString(R.string.cloud_restore_success), safetyCopy)
                         } catch (error: Throwable) {
@@ -305,7 +305,7 @@ fun CloudBackupScreen(onBack: () -> Unit) {
 }
 
 private fun formatBackupDate(context: Context, name: String): String {
-    val stamp = name.removePrefix("TarkastusPro_backup_").removeSuffix(".zip")
+    val stamp = name.removePrefix("TarkastusCloud_backup_").removeSuffix(".zip")
     val date = listOf("yyyyMMdd_HHmmss_SSS", "yyyyMMdd_HHmmss").firstNotNullOfOrNull { pattern ->
         runCatching { SimpleDateFormat(pattern, Locale.US).parse(stamp) }.getOrNull()
     }

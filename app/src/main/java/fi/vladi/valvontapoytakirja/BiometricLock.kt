@@ -62,7 +62,7 @@ internal object BiometricLock {
                 }
             })
         prompt.authenticate(BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Tarkastus Cloud")
+            .setTitle(context.getString(R.string.app_name))
             .setSubtitle(context.getString(R.string.bio_verify))
             .setNegativeButtonText(context.getString(R.string.bio_cancel))
             .setAllowedAuthenticators(AUTHENTICATORS)
@@ -104,7 +104,7 @@ internal fun BiometricSettingsControl() {
 }
 
 @Composable
-internal fun BiometricSessionGate(onUnlocked: @Composable () -> Unit) {
+internal fun BiometricSessionGate(onSignOut: () -> Unit, onUnlocked: @Composable () -> Unit) {
     val context = LocalContext.current
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
     var unlocked by remember(uid) { mutableStateOf(!BiometricLock.enabled(context, uid)) }
@@ -146,7 +146,7 @@ internal fun BiometricSessionGate(onUnlocked: @Composable () -> Unit) {
         }
     } else {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Tarkastus Cloud – " + androidx.compose.ui.res.stringResource(R.string.bio_title))
+            Text(androidx.compose.ui.res.stringResource(R.string.app_name) + " – " + androidx.compose.ui.res.stringResource(R.string.bio_title))
             if (error.isNotEmpty()) Text(error)
             Button(onClick = {
                 if (BiometricLock.available(context)) {
@@ -158,8 +158,7 @@ internal fun BiometricSessionGate(onUnlocked: @Composable () -> Unit) {
                 }
             }) { Text(androidx.compose.ui.res.stringResource(R.string.bio_unlock)) }
             OutlinedButton(onClick = {
-                FirebaseAuth.getInstance().signOut()
-                (context as? android.app.Activity)?.recreate()
+                onSignOut()
             }) { Text(androidx.compose.ui.res.stringResource(R.string.bio_sign_out)) }
         }
     }

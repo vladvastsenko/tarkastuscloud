@@ -17,9 +17,9 @@ import java.util.Locale
  * Deletions propagate only when the other side has not changed since the last sync.
  */
 object CloudSyncManager {
-    private const val PREFS = "tarkastus_pro_sync"
+    private const val PREFS = "tarkastus_cloud_universal_sync"
     private const val BASELINE_KEY = "baseline_shared_v2"
-    private const val SYNC_FOLDER = "TarkastusPro_Sync"
+    private const val SYNC_FOLDER = "TarkastusCloud_Sync"
     private const val DATA_FOLDER = "shared_v2"
     private const val CONFLICTS_FOLDER = "Conflicts"
 
@@ -66,19 +66,20 @@ object CloudSyncManager {
 
     @Synchronized
     fun sync(context: Context, treeUri: Uri): Result {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val selectedRoot = DocumentFile.fromTreeUri(context, treeUri)
             ?: error("Valittua Google Drive -kansiota ei voi avata.")
         check(selectedRoot.isDirectory && selectedRoot.canWrite()) { "Valittuun kansioon ei voi tallentaa." }
 
         val syncRoot = selectedRoot.findFile(SYNC_FOLDER) ?: selectedRoot.createDirectory(SYNC_FOLDER)
             ?: error("Synkronointikansiota ei voitu luoda.")
-        // Older builds synchronized every private file into TarkastusPro_Sync/data.
+        // Older builds synchronized every private file into TarkastusCloud_Sync/data.
         // Refuse to silently treat that unsafe folder as the new shared dataset.
         // The old folder is left untouched for the owner to review and remove.
         val legacyData = syncRoot.findFile("data")
         check(legacyData == null || !legacyData.isDirectory ||
             legacyData.listFiles().isEmpty()) {
-            "Vanhassa TarkastusPro_Sync/data-kansiossa voi olla henkilökohtaisia tietoja. " +
+            "Vanhassa TarkastusCloud_Sync/data-kansiossa voi olla henkilökohtaisia tietoja. " +
                 "Tarkista ja poista vanha data-kansio Google Drivesta ennen uutta synkronointia."
         }
         val remoteData = syncRoot.findFile(DATA_FOLDER) ?: syncRoot.createDirectory(DATA_FOLDER)
@@ -221,7 +222,7 @@ object CloudSyncManager {
             "Synkronoinnin tilaa ei voitu tallentaa laitteelle."
         }
 
-        // Synchronize exported PDFs from Documents/TarkastusPro as a separate dataset.
+        // Synchronize exported PDFs from Documents/TarkastusCloud as a separate dataset.
         val pdfResult = PdfArchiveSyncManager.sync(context, selectedRoot, syncRoot, conflictRoot)
         return Result(
             uploaded = uploaded,
@@ -309,6 +310,7 @@ object CloudSyncManager {
     }
 
     private fun upload(context: Context, root: DocumentFile, path: String, source: File) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         // Persist this exact report version before modifying the shared head.
         preserveReportVersion(context, root, path, source)
         val parent = ensureRemoteParent(root, path)
@@ -382,6 +384,7 @@ object CloudSyncManager {
     }
 
     private fun download(context: Context, source: DocumentFile, localRoot: File, path: String) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val target = File(localRoot, path)
         val canonicalRoot = localRoot.canonicalFile
         val canonicalTarget = target.canonicalFile
@@ -419,6 +422,7 @@ object CloudSyncManager {
     }
 
     private fun saveConflict(context: Context, conflictRoot: DocumentFile, path: String, localFile: File) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val date = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val safeName = path.replace('/', '_').replace('\\', '_')
         val target = conflictRoot.createFile("application/octet-stream", "${safeName}_local_${date}.conflict")

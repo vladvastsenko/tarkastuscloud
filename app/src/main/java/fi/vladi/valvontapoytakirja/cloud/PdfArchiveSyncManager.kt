@@ -15,15 +15,15 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Two-way synchronization for PDFs exported to Documents/TarkastusPro/Raportit/PDF.
+ * Two-way synchronization for PDFs exported to Documents/TarkastusCloud/Raportit/PDF.
  * The Drive copy is stored in the selected Drive folder's top-level PDF directory.
  */
 internal object PdfArchiveSyncManager {
-    private const val PREFS = "tarkastus_pro_sync"
+    private const val PREFS = "tarkastus_cloud_universal_sync"
     private const val BASELINE_KEY = "pdf_baseline_v1"
-    private const val DOCUMENTS_ROOT = "Documents/TarkastusPro/"
+    private const val DOCUMENTS_ROOT = "Documents/TarkastusCloud/"
     private const val PDF_DIRECTORY = "Raportit/PDF"
-    private const val REMOTE_FOLDER = "TarkastusPro_PDF"
+    private const val REMOTE_FOLDER = "TarkastusCloud_PDF"
 
     data class Result(
         val uploaded: Int = 0,
@@ -37,6 +37,7 @@ internal object PdfArchiveSyncManager {
     private data class LocalPdf(val uri: Uri)
 
     fun sync(context: Context, selectedRoot: DocumentFile, syncRoot: DocumentFile, conflictRoot: DocumentFile): Result {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         // MediaStore RELATIVE_PATH is available from Android 10 (API 29).
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return Result()
 
@@ -44,7 +45,7 @@ internal object PdfArchiveSyncManager {
             ?: selectedRoot.createDirectory(REMOTE_FOLDER)
             ?: error("PDF-synkronointikansiota ei voitu luoda Google Driveen.")
 
-        // One-time migration from the previous nested location TarkastusPro_Sync/PDF.
+        // One-time migration from the previous nested location TarkastusCloud_Sync/PDF.
         // Existing top-level PDFs remain authoritative if a same-path name already exists.
         migrateLegacyFolder(context, syncRoot.findFile(REMOTE_FOLDER), remoteRoot, conflictRoot)
 
@@ -284,6 +285,7 @@ internal object PdfArchiveSyncManager {
     }
 
     private fun upload(context: Context, root: DocumentFile, path: String, source: Uri) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val parent = ensureRemoteParent(root, path)
         val name = path.substringAfterLast('/')
         parent.findFile(name)?.let { existing ->
@@ -304,6 +306,7 @@ internal object PdfArchiveSyncManager {
     }
 
     private fun download(context: Context, source: DocumentFile, path: String) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val temporary = File(context.cacheDir, "pdf_sync_${System.currentTimeMillis()}_${path.hashCode()}.pdf")
         try {
             context.contentResolver.openInputStream(source.uri)?.use { input ->
@@ -320,13 +323,14 @@ internal object PdfArchiveSyncManager {
                 "application/pdf",
                 overwrite = true
             )
-            check(saved != null) { "PDF-tiedostoa ei voitu tallentaa kansioon Documents/TarkastusPro: $path" }
+            check(saved != null) { "PDF-tiedostoa ei voitu tallentaa kansioon Documents/TarkastusCloud: $path" }
         } finally {
             temporary.delete()
         }
     }
 
     private fun saveConflict(context: Context, conflictRoot: DocumentFile, path: String, local: Uri) {
+        fi.vladi.valvontapoytakirja.PremiumAccess.requireCloud()
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val safeName = path.replace('/', '_').replace('\\', '_')
         val target = conflictRoot.createFile("application/pdf", "${safeName}_local_${stamp}.pdf")

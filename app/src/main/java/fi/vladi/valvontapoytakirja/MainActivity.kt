@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -50,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,9 +93,21 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!BuildConfig.OFFLINE_PREVIEW && BuildConfig.PREMIUM_CHECKOUT_ENABLED) {
+            com.google.firebase.appcheck.FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory.getInstance()
+            )
+        }
+        val recovery = runCatching {
+            fi.vladi.valvontapoytakirja.cloud.recoverInterruptedRestore(java.io.File(applicationInfo.dataDir, "files"))
+        }
+        if (recovery.isFailure) {
+            setContent { MaterialTheme { Box(Modifier.fillMaxSize().safeDrawingPadding()) { RecoveryScreen(File(applicationInfo.dataDir, "files")) { recreate() } } } }
+            return
+        }
         setContent {
             MaterialTheme(colorScheme = fi.vladi.tarkastuspoytakirja.TarkastusBlueColors) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = MaterialTheme.colorScheme.background) {
                     var languageChosen by remember { mutableStateOf(AppLanguage.hasSelection(this@MainActivity)) }
                     if (!languageChosen) {
                         FirstLaunchLanguageScreen { language ->
@@ -103,7 +117,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                         }
                     } else {
                         if (BuildConfig.OFFLINE_PREVIEW) UnifiedLauncher(onSignOut = {})
-                        else CloudAuthGate { signOut -> UnifiedLauncher(onSignOut = signOut) }
+                        else CloudAuthGate { signOut, checkout, finished, declined -> UnifiedLauncher(onSignOut = signOut, registrationCheckout = checkout, onCheckoutFinished = finished, onCheckoutDeclined = declined) }
                     }
                 }
             }
@@ -124,8 +138,8 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
         val pictureHeight = pictureWidth * 1.5f
         Box(modifier = Modifier.width(pictureWidth).height(pictureHeight)) {
             Image(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuspro),
-                contentDescription = "Tarkastus Pro — Inspect. Document. Share.",
+                painter = androidx.compose.ui.res.painterResource(R.drawable.tarkastuscloud),
+                contentDescription = "Tarkastus Cloud — Inspect. Document. Share.",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
@@ -143,11 +157,11 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
                             containerColor = androidx.compose.ui.graphics.Color.White
                         )
                     ) {
-                        Text(languages.first { it.first == selected }.second + " ▾")
+                        Text(AppLanguage.flaggedLabel(selected) + " ▾")
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         languages.forEach { (code, label) ->
-                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                            DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
                                 selected = code
                                 expanded = false
                             })
@@ -163,27 +177,54 @@ private fun FirstLaunchLanguageScreen(onContinue: (String) -> Unit) {
 }
 
 @Composable
-private fun UnifiedLauncher(onSignOut: () -> Unit) {
+private fun UnifiedLauncher(onSignOut: () -> Unit, registrationCheckout: Boolean = false, onCheckoutFinished: () -> Unit = {}, onCheckoutDeclined: () -> Unit = {}) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { SharedDocumentsArchive.ensureFolder(context) }
     }
+    val premium = rememberPremiumController()
+    var showPremium by rememberSaveable { mutableStateOf(registrationCheckout) }
+    LaunchedEffect(registrationCheckout, premium.active) {
+        if (registrationCheckout) {
+            showPremium = true
+            if (premium.active) onCheckoutFinished()
+        }
+    }
+    val closePremium: () -> Unit = {
+        showPremium = false
+        if (registrationCheckout && !premium.active) onCheckoutDeclined()
+    }
+    var showLocalBackup by rememberSaveable { mutableStateOf(false) }
     val consent = remember(context) { if (BuildConfig.OFFLINE_PREVIEW) null else AdConsentManager(context as android.app.Activity) }
     LaunchedEffect(consent) { consent?.request() }
-    var showSharedSettings by remember { mutableStateOf(false) }
-    var showManagement by remember { mutableStateOf(false) }
-    var showCloudBackup by remember { mutableStateOf(false) }
-    var showUserGuide by remember { mutableStateOf(false) }
+    var showSharedSettings by rememberSaveable { mutableStateOf(false) }
+    var showManagement by rememberSaveable { mutableStateOf(false) }
+    var showCloudBackup by rememberSaveable { mutableStateOf(false) }
+    var showUserGuide by rememberSaveable { mutableStateOf(false) }
 
-    if (showUserGuide) {
+    androidx.activity.compose.BackHandler(enabled = (showLocalBackup || showPremium || showUserGuide || showCloudBackup || showSharedSettings || showManagement)) {
+        when {
+            showLocalBackup -> showLocalBackup = false
+            showPremium -> closePremium()
+            showUserGuide -> showUserGuide = false
+            showCloudBackup -> showCloudBackup = false
+            showSharedSettings -> showSharedSettings = false
+            showManagement -> showManagement = false
+        }
+    }
+    if (showLocalBackup) {
+        LocalBackupScreen(onBack = { showLocalBackup = false })
+    } else if (showPremium) {
+        PremiumManagementScreen(premium, onBack = closePremium, onSignIn = onSignOut, registrationCheckout = registrationCheckout)
+    } else if (showUserGuide) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { UserGuideScreen(onBack = { showUserGuide = false }) }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
-    } else if (showCloudBackup) {
+    } else if (showCloudBackup && premium.active && !BuildConfig.OFFLINE_PREVIEW) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f)) { CloudBackupScreen(onBack = { showCloudBackup = false }) }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
     } else if (showSharedSettings) {
         SharedSettingsApp(onBack = { showSharedSettings = false })
@@ -194,22 +235,21 @@ private fun UnifiedLauncher(onSignOut: () -> Unit) {
             onSettings = {
                 showSharedSettings = true
             },
-            onCloudBackup = { showCloudBackup = true },
+            onCloudBackup = { if (premium.active) showCloudBackup = true else showPremium = true },
+            onPremium = { showPremium = true },
+            onLocalBackup = { showLocalBackup = true },
             onUserGuide = { showUserGuide = true },
             onBack = { showManagement = false },
             onSignOut = onSignOut,
             consent = consent
                 )
             }
-            if ((consent?.canRequestAds == true)) TestAdMobBanner()
+            if ((consent?.canRequestAds == true && !premium.active)) CloudAdMobBanner()
         }
     } else {
-        UnifiedStartScreen(
-            onTarkastus = {
-                context.startActivity(Intent(context, TarkastusMainActivity::class.java))
-            },
+        fi.vladi.tarkastuspoytakirja.TarkastusApp(
             onManagement = { showManagement = true },
-            showAds = (consent?.canRequestAds == true)
+            homeFooter = { if (consent?.canRequestAds == true && !premium.active) CloudAdMobBanner() }
         )
     }
 }
@@ -229,7 +269,7 @@ private fun UnifiedStartScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Tarkastus Pro",
+                "Tarkastus Cloud",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -244,19 +284,18 @@ private fun UnifiedStartScreen(
             Text(stringResource(R.string.report_tarkastus))
         }
         Spacer(modifier = Modifier.weight(1f))
-        if (showAds) TestAdMobBanner()
+        if (showAds) CloudAdMobBanner()
     }
 }
 
 @Composable
-private fun TestAdMobBanner() {
+private fun CloudAdMobBanner() {
     val context = LocalContext.current
     val adView = remember(context) {
         AdView(context).apply {
             setAdSize(AdSize.BANNER)
-            // Official Google test banner ID. Never request live ads in testing builds.
-            // Production unit: test ads only
-            adUnitId = "ca-app-pub-3940256099942544/6300978111"
+            // Production IDs require explicit productionAds opt-in.
+            adUnitId = BuildConfig.CLOUD_BANNER_ID
             loadAd(AdRequest.Builder().build())
         }
     }
@@ -270,6 +309,8 @@ private fun TestAdMobBanner() {
 private fun ManagementScreen(
     onSettings: () -> Unit,
     onCloudBackup: () -> Unit,
+    onPremium: () -> Unit,
+    onLocalBackup: () -> Unit,
     onUserGuide: () -> Unit,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
@@ -296,11 +337,11 @@ private fun ManagementScreen(
         Text(stringResource(R.string.language), fontWeight = FontWeight.Bold)
         Box {
             OutlinedButton(onClick = { languageMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(AppLanguage.label(AppLanguage.selected(context)) + " ▾")
+                Text(AppLanguage.flaggedLabel(AppLanguage.selected(context)) + " ▾")
             }
             DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
                 AppLanguage.options.forEach { (code, label) ->
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                    DropdownMenuItem(text = { Text(AppLanguage.flaggedLabel(code)) }, onClick = {
                         languageMenu = false
                         if (AppLanguage.selected(context) != code) {
                             AppLanguage.save(context, code)
@@ -310,28 +351,34 @@ private fun ManagementScreen(
                 }
             }
         }
-        Text(stringResource(R.string.pdf_language_default), fontWeight = FontWeight.Bold)
-        Text(AppLanguage.label(AppLanguage.selected(context)))
+        OutlinedButton(onClick = onLocalBackup, modifier = Modifier.fillMaxWidth()) { Text(localBackupLabels(AppLanguage.selected(context))[0]) }
+        OutlinedButton(onClick = onPremium, modifier = Modifier.fillMaxWidth()) { Text("Premium") }
         if (!guestMode) BiometricSettingsControl()
+        else {
+            Text(stringResource(R.string.bio_title))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.bio_disabled))
+                Switch(checked = false, onCheckedChange = {}, enabled = false)
+            }
+        }
         Button(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.shared_settings))
         }
-        if (!guestMode) {
-            Button(onClick = onCloudBackup, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.cloud_sync))
-            }
-        } else {
-            Text(stringResource(R.string.guest_local_notice))
+        OutlinedButton(onClick = onUserGuide, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.user_guide_title))
         }
+        Button(onClick = { if (guestMode) onSignOut() else onCloudBackup() },
+            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.cloud_sync))
+        }
+        if (guestMode) Text(stringResource(R.string.guest_local_notice))
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text("← " + stringResource(R.string.back))
         }
-        if (!BuildConfig.OFFLINE_PREVIEW) OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { if (guestMode) onSignOut() else confirmSignOut = true },
+            enabled = !BuildConfig.OFFLINE_PREVIEW, modifier = Modifier.fillMaxWidth()) {
             Text(if (guestMode) stringResource(R.string.guest_sign_in) else stringResource(R.string.sign_out))
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onUserGuide, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.user_guide_title))
         }
         if (consent?.privacyOptionsRequired == true) {
             OutlinedButton(onClick = { consent.showPrivacyOptions() }, modifier = Modifier.fillMaxWidth()) {
