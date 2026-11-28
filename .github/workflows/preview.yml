@@ -15,18 +15,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Import verified original Cloud artwork
-        env:
-          SOURCE_REF: 80f845a203da9ed0484ce597426a5f9b10156756
+      - name: Verify new Cloud artwork
         run: |
-          set -eu
-          base="https://raw.githubusercontent.com/vladvastsenko/valvontapoytakirja/$SOURCE_REF/app/src/main/res/drawable-nodpi"
-          curl --fail --location --retry 3 "$base/tarkastus_cloud_icon.png" -o app/src/main/res/drawable/icon.png
-          curl --fail --location --retry 3 "$base/welcome.png" -o app/src/main/res/drawable/tarkastuscloud.png
-          test "$(git hash-object app/src/main/res/drawable/icon.png)" = "5cc6c36cc4fefafd909761376aed8367c642a226"
-          test "$(git hash-object app/src/main/res/drawable/tarkastuscloud.png)" = "169df2b38aa2dbe8afee0cf96481bf1653afff9a"
-          file app/src/main/res/drawable/icon.png app/src/main/res/drawable/tarkastuscloud.png
-          python3 -c 'from pathlib import Path; assert all(Path(p).read_bytes().startswith(bytes.fromhex("89504e470d0a1a0a")) for p in ["app/src/main/res/drawable/icon.png","app/src/main/res/drawable/tarkastuscloud.png"])'
+          cmp cloud-icon.png app/src/main/res/drawable/icon.png
+          cmp cloud-welcome.png app/src/main/res/drawable/tarkastuscloud.png
       - run: python3 scripts/check-cloud-locales.py
       - name: Build with dedicated Cloud signing key when configured
         env:
